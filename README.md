@@ -251,12 +251,17 @@ startup:
 ### Custom Startup Artwork
 
 ```yaml
-# Option 1: External file
+# Option 1: External .aa file (native format)
 startup:
-  artwork_file: "~/.config/aart/my_logo.txt"
+  artwork_file: "./my_logo.aa"
   artwork_border: true
   
-# Option 2: Inline YAML
+# Option 2: External text file
+startup:
+  artwork_file: "~/.config/aart/logo.txt"
+  artwork_border: true
+  
+# Option 3: Inline YAML
 startup:
   artwork_inline: |
     ╔════════════════╗
