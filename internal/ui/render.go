@@ -10,93 +10,54 @@ import (
 // Beautiful themed render functions
 
 func (m Model) renderStatusBar() string {
-	// Beautiful gradient title
-	title := m.styles.StatusBarTitle.Render("✨ aart")
+	// Compact status bar without emoji clutter
 	
-	// File info with icon
-	fileIcon := "📄"
+	// File info - only show icon if modified
 	fileStyle := m.styles.StatusBarSection
+	fileInfo := m.filename
 	if m.modified {
-		fileIcon = "✏️"
 		fileStyle = m.styles.Warning
+		fileInfo = m.filename + " *"
 	}
-	fileInfo := fileStyle.Render(fmt.Sprintf("%s %s", fileIcon, m.filename))
 	
-	// Canvas size with breathing effect
-	sizeStyle := m.styles.StatusBarSection
-	alpha := m.breathing.CurrentAlpha()
-	if alpha > 0.9 {
-		sizeStyle = m.styles.Info
-	}
-	canvasInfo := sizeStyle.Render(fmt.Sprintf("📐 %dx%d", 
+	// Canvas dimensions
+	canvasInfo := fmt.Sprintf("%dx%d", 
 		m.frames[m.currentFrame].Width, 
-		m.frames[m.currentFrame].Height))
+		m.frames[m.currentFrame].Height)
 	
-	// Frame indicator with color
-	frameStyle := lipgloss.NewStyle().
-		Foreground(m.theme.AccentPrimary).
-		Bold(true)
-	frameInfo := frameStyle.Render(fmt.Sprintf("🎬 %d/%d", 
-		m.currentFrame+1, len(m.frames)))
+	// Frame counter
+	frameInfo := fmt.Sprintf("frame %d/%d", 
+		m.currentFrame+1, len(m.frames))
 	
-	// FPS with playback icon
-	fpsIcon := "⏸"
-	fpsStyle := m.styles.Muted
+	// FPS with playback state
+	fpsInfo := fmt.Sprintf("%dfps", m.fps)
 	if m.playing {
-		fpsIcon = "▶"
-		fpsStyle = lipgloss.NewStyle().
+		fpsStyle := lipgloss.NewStyle().
 			Foreground(m.theme.AccentSuccess).
 			Bold(true)
+		fpsInfo = fpsStyle.Render("▸ " + fpsInfo)
 	}
-	fpsInfo := fpsStyle.Render(fmt.Sprintf("%s %dfps", fpsIcon, m.fps))
 	
-	// Tool info with icon
-	toolIcons := map[Tool]string{
-		ToolPencil:     "✏️",
-		ToolFill:       "🪣",
-		ToolSelect:     "⬚",
-		ToolLine:       "╱",
-		ToolBox:        "▢",
-		ToolText:       "𝑻",
-		ToolEyedropper: "💧",
-		ToolMove:       "✥",
-	}
-	toolIcon := toolIcons[m.selectedTool]
+	// Tool info - clean without icon
 	toolName := toolNames[m.selectedTool]
-	toolStyle := lipgloss.NewStyle().
-		Foreground(m.theme.AccentSecondary)
-	toolInfo := toolStyle.Render(fmt.Sprintf("%s %s", toolIcon, toolName))
-	
-	// Colors with visual preview
-	fgPreview := lipgloss.NewStyle().
-		Foreground(m.theme.AccentPrimary).
-		Bold(true).
-		Render(string(m.fgChar))
-	bgPreview := lipgloss.NewStyle().
-		Foreground(m.theme.FgMuted).
-		Render("░")
-	colorInfo := m.styles.StatusBarSection.Render(fmt.Sprintf("fg:%s bg:%s", fgPreview, bgPreview))
+	toolInfo := fmt.Sprintf("%s", toolName)
 	
 	// Layer info
-	layerStyle := lipgloss.NewStyle().
-		Foreground(m.theme.FgSecondary)
-	layerInfo := layerStyle.Render(fmt.Sprintf("📑 %d/%d", 
-		m.currentLayer+1, len(m.layers)))
+	layerInfo := fmt.Sprintf("layer %d/%d", 
+		m.currentLayer+1, len(m.layers))
 	
-	// Divider with theme color
+	// Divider
 	div := lipgloss.NewStyle().
 		Foreground(m.theme.Border).
 		Render(" │ ")
 	
-	// Assemble with spacing
+	// Assemble compact status
 	sections := []string{
-		title,
-		fileInfo,
+		fileStyle.Render(fileInfo),
 		canvasInfo,
 		frameInfo,
 		fpsInfo,
 		toolInfo,
-		colorInfo,
 		layerInfo,
 	}
 	
@@ -119,19 +80,45 @@ func (m Model) renderTimeline() string {
 	// Simplified top border - no title, just clean line
 	b.WriteString(borderStyle.Render("├" + strings.Repeat("─", lineWidth) + "┤\n│ "))
 	
-	// Frame indicators - sleek minimal
+	// Frame indicators - scrolling window centered on current frame
 	maxFrames := 30
-	displayFrames := len(m.frames)
-	if displayFrames > maxFrames {
-		displayFrames = maxFrames
+	totalFrames := len(m.frames)
+	
+	// Calculate visible frame window
+	var startFrame, endFrame int
+	if totalFrames <= maxFrames {
+		// Show all frames
+		startFrame = 0
+		endFrame = totalFrames
+	} else {
+		// Scroll window centered on current frame
+		halfWindow := maxFrames / 2
+		startFrame = m.currentFrame - halfWindow
+		endFrame = m.currentFrame + halfWindow
+		
+		// Clamp to valid range
+		if startFrame < 0 {
+			startFrame = 0
+			endFrame = maxFrames
+		} else if endFrame > totalFrames {
+			endFrame = totalFrames
+			startFrame = totalFrames - maxFrames
+		}
 	}
 	
-	for i := 0; i < displayFrames; i++ {
+	// Show window indicator if scrolled
+	if startFrame > 0 {
+		leftStyle := lipgloss.NewStyle().
+			Foreground(m.theme.FgMuted)
+		b.WriteString(leftStyle.Render("‹ "))
+	}
+	
+	for i := startFrame; i < endFrame; i++ {
 		var frameStyle lipgloss.Style
-		frameText := fmt.Sprintf("%2d", i+1)
+		var frameText string
 		
 		if i == m.currentFrame {
-			// Current frame - sleek indicator
+			// Current frame - prominent indicator
 			frameStyle = lipgloss.NewStyle().
 				Foreground(m.theme.AccentPrimary).
 				Bold(true)
@@ -140,28 +127,34 @@ func (m Model) renderTimeline() string {
 			if alpha > 0.9 {
 				frameText = "◉"
 			}
+		} else if m.frames[i].Modified {
+			// Modified frame marker
+			frameStyle = lipgloss.NewStyle().
+				Foreground(m.theme.AccentWarning)
+			frameText = "◉"
 		} else if i < m.currentFrame {
-			// Past frames - done
+			// Past frames
 			frameStyle = lipgloss.NewStyle().
 				Foreground(m.theme.TimelineInactive)
 			frameText = "·"
 		} else {
-			// Future frames - todo
+			// Future frames
 			frameStyle = lipgloss.NewStyle().
 				Foreground(m.theme.FgMuted)
 			frameText = "·"
 		}
 		
 		b.WriteString(frameStyle.Render(frameText))
-		if i < displayFrames-1 {
+		if i < endFrame-1 {
 			b.WriteString(" ")
 		}
 	}
 	
-	if len(m.frames) > maxFrames {
-		moreStyle := lipgloss.NewStyle().
+	// Show right indicator if more frames
+	if endFrame < totalFrames {
+		rightStyle := lipgloss.NewStyle().
 			Foreground(m.theme.FgMuted)
-		b.WriteString(moreStyle.Render(fmt.Sprintf(" …+%d", len(m.frames)-maxFrames)))
+		b.WriteString(rightStyle.Render(" ›"))
 	}
 	
 	// Frame count indicator

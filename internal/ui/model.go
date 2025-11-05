@@ -785,7 +785,7 @@ func (m Model) renderCanvas(height int) string {
 		if m.wheel.State == WheelExpanded {
 			wheelWidth = 22
 		} else {
-			wheelWidth = 13
+			wheelWidth = 10 // Compact 4-letter wheel
 		}
 		canvasWidth -= wheelWidth
 	}
@@ -850,47 +850,60 @@ func (m Model) renderWheel(line, totalHeight int) string {
 		return m.renderExpandedWheel(line, totalHeight)
 	}
 	
-	// Collapsed/Cycling wheel - show on right edge
+	// Collapsed/Cycling wheel - compact 4-letter codes
 	wheelLines := []string{
-		"      ╭────╮",
-		"      │HELP│",
-		"     ╭┴────┤",
-		"     │EXPRT│",
-		"    ╭┴─────┤",
-		"    │IMPRT │",
-		"   ╭┴──────┤",
-		"   │LAYERS │",
-		"  ╭┴───────┤",
-		"  │ TOOLS  │",
-		" ╭┴────────┤",
-		" │ COLORS  │",
-		" ╰─────────╯",
+		"     ╔════╗",
+		"     ║HELP║",
+		"     ╠════╣",
+		"     ║EXPT║",
+		"     ╠════╣",
+		"     ║IMPT║",
+		"     ╠════╣",
+		"     ║LAYR║",
+		"     ╠════╣",
+		"     ║TOOL║",
+		"     ╠════╣",
+		"     ║COLR║",
+		"     ╚════╝",
 	}
 	
-	// Indicators on specific lines
+	// Add selection indicator
 	var wheelLine string
 	if line < len(wheelLines) {
 		wheelLine = wheelLines[line]
 		
-		// Highlight selected section
-		if (line == 1 && m.wheel.Selected == WheelHelp) ||
-		   (line == 3 && m.wheel.Selected == WheelExport) ||
-		   (line == 5 && m.wheel.Selected == WheelImport) ||
-		   (line == 7 && m.wheel.Selected == WheelLayers) ||
-		   (line == 9 && m.wheel.Selected == WheelTools) ||
-		   (line == 11 && m.wheel.Selected == WheelColors) {
-			// Add indicator
-			wheelLine = strings.Replace(wheelLine, "│", "│", 1)
-			wheelLine = strings.TrimRight(wheelLine, " │")
-			wheelLine += " ◄│"
+		// Highlight selected section with ◄
+		selectedLine := -1
+		switch m.wheel.Selected {
+		case WheelHelp:
+			selectedLine = 1
+		case WheelExport:
+			selectedLine = 3
+		case WheelImport:
+			selectedLine = 5
+		case WheelLayers:
+			selectedLine = 7
+		case WheelTools:
+			selectedLine = 9
+		case WheelColors:
+			selectedLine = 11
+		}
+		
+		if line == selectedLine {
+			// Replace last border with indicator
+			wheelLine = strings.TrimRight(wheelLine, "║")
+			wheelLine += "◄"
 			return lipgloss.NewStyle().
-				Foreground(lipgloss.Color("11")).
+				Foreground(m.theme.AccentPrimary).
+				Bold(true).
 				Render(wheelLine)
 		}
 		
-		return wheelLine
+		return lipgloss.NewStyle().
+			Foreground(m.theme.Border).
+			Render(wheelLine)
 	}
-	return strings.Repeat(" ", 13)
+	return strings.Repeat(" ", 10)
 }
 
 func (m Model) renderExpandedWheel(line, totalHeight int) string {
