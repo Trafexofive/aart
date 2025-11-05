@@ -116,6 +116,11 @@ type Model struct {
 	zoom       float64
 	zenMode    bool  // Minimal UI mode
 	
+	// Theme and styles
+	theme      Theme
+	styles     Styles
+	breathing  *BreathingEffect
+	
 	// Command mode
 	command    string
 	
@@ -259,6 +264,14 @@ func newModelWithConfig(frames []*Frame, filename string, cfg *config.Config) Mo
 		cfg = &c
 	}
 
+	// Get theme from config or use default
+	themeName := cfg.UI.Theme
+	if themeName == "" {
+		themeName = "tokyo-night"
+	}
+	theme := GetTheme(themeName)
+	styles := NewStyles(theme)
+
 	return Model{
 		mode:         ModeNormal,
 		cursor:       Pos{X: 40, Y: 12},
@@ -274,6 +287,9 @@ func newModelWithConfig(frames []*Frame, filename string, cfg *config.Config) Mo
 		zoom:         1.0,
 		showGrid:     cfg.Editor.ShowGrid,
 		zenMode:      cfg.Editor.ZenMode,
+		theme:        theme,
+		styles:       styles,
+		breathing:    NewBreathingEffect(3 * time.Second),
 		filename:     filename,
 		layers: []Layer{
 			{Name: "background", Visible: true, Opacity: 1.0, BlendMode: "normal"},
