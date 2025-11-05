@@ -120,42 +120,118 @@ Commands available:
 
 aart uses a YAML configuration file located at `~/.config/aart/config.yml`.
 
+### Initialize Configuration
+
+```bash
+# Create config directory and default config.yml
+./aart --init
+
+# View current config path
+./aart --config-path
+
+# View current configuration
+./aart --show-config
+```
+
 ### Config File Structure
 
 ```yaml
+version: 0.1.0
+
 editor:
-  default_width: 80
-  default_height: 24
-  default_fps: 12
-  auto_save: true
+  default_width: 80          # Default canvas width
+  default_height: 24         # Default canvas height
+  default_fps: 12            # Default animation FPS
+  auto_save: false           # Auto-save enabled
+  auto_save_interval: 300    # Auto-save interval (seconds)
+  tab_size: 4                # Tab width
+  show_grid: false           # Show grid by default
+  show_line_numbers: false   # Show line numbers
+  zen_mode: false            # Start in zen mode
+
+ui:
+  theme: tokyo-night         # Theme name (tokyo-night, gruvbox, monokai, dracula)
+  show_status_bar: true      # Show status bar
+  show_timeline: true        # Show timeline
+  show_wheel_by_default: false  # Show radial wheel on startup
+  cursor_style: line         # Cursor style (block, line, underline)
+  animation_smooth: true     # Smooth animations
+  progress_style: bar        # Progress indicator (bar, spinner, minimal)
+  border_style: rounded      # Border style (rounded, thick, double, ascii)
+  timeline_style: detailed   # Timeline style (compact, detailed, minimal)
+  status_bar_position: bottom  # Status bar position (top, bottom)
+
+colors:
+  name: default              # Color scheme name
+  foreground: '#FFFFFF'      # Primary text color
+  background: '#000000'      # Background color
+  cursor: '#FFFF00'          # Cursor color
+  selection: '#444444'       # Selection highlight
+  status_bar: '#333333'      # Status bar background
+  timeline: '#222222'        # Timeline background
+  border: '#666666'          # Border color
+
+recent:
+  files: []                  # Auto-populated recent files
+  max_entries: 10            # Maximum recent files to track
+
+converter:
+  default_method: luminosity # Default GIF conversion (luminosity, block, edge, dither)
+  default_chars: ""          # Custom character ramp (empty = auto)
+  preserve_aspect: true      # Preserve aspect ratio
+  quality: high              # Conversion quality (low, medium, high)
+
+startup:
+  show_startup_page: true    # Show startup page on launch
+  artwork_file: ""           # Custom ASCII art file path
+  artwork_inline: ""         # Inline ASCII art (multiline YAML string)
+  artwork_border: true       # Show border around artwork
+  artwork_offset_x: 0        # X offset for artwork positioning
+  artwork_offset_y: 0        # Y offset for artwork positioning
+  artwork_width: 0           # Max width (0 = auto)
+  artwork_height: 0          # Max height (0 = auto)
+  show_recent_files: true    # Show recent files panel
+  show_tips: true            # Show rotating tips
+  tip_rotation_seconds: 5    # Seconds between tip rotation
+  breathing_effect: true     # Enable breathing animation
+```
+
+### Custom Startup Artwork
+
+You can customize the startup logo by either providing a file path or inline content:
+
+```yaml
+# Option 1: External file
+startup:
+  artwork_file: "~/.config/aart/my_logo.txt"
+  artwork_border: true
   
-theme:
-  name: "default"
-  colors:
-    background: "#1a1a1a"
-    foreground: "#ffffff"
-    accent: "#00ff00"
+# Option 2: Inline YAML
+startup:
+  artwork_inline: |
+    ╔════════════════╗
+    ║   MY EDITOR   ║
+    ╚════════════════╝
+  artwork_border: false
   
-import:
-  default_method: "luminosity"
-  character_ramp: " .:-=+*#%@"
-  preserve_aspect: true
-  
-recent_files:
-  max_count: 10
-  
-paths:
-  projects: "~/.config/aart/projects"
-  cache: "~/.config/aart/cache"
+# Option 3: Relative to config directory
+startup:
+  artwork_file: "startup_art.txt"  # Looks in ~/.config/aart/startup_art.txt
+  artwork_border: true
+  artwork_offset_x: 2
+  artwork_offset_y: 1
 ```
 
 ### Edit Config
 
 ```bash
-# Open config in $EDITOR
-./aart --config
+# Edit config in $EDITOR
+./aart --init  # Creates config if it doesn't exist
+# Then select "Edit Config" from startup menu, or:
+$EDITOR ~/.config/aart/config.yml
 
-# Or edit directly via startup menu (option: Edit Config)
+# Quick command from startup page
+# Press 'c' key to open config in $EDITOR
 ```
 
 ## File Formats
@@ -219,13 +295,19 @@ pkg/
 - [x] Config file system (~/.config/aart/)
 - [x] Recent files management
 - [x] Theme system
-- [x] Startup page
+- [x] Startup page with customization
+- [x] Custom startup artwork support
+- [x] Terminal size auto-detection
+- [x] Aspect ratio modes (fill, fit, original)
+- [x] Edit config from startup menu
 
 ### Phase 4: Current Focus 🚧
+- [x] GIF import with URL and local file support
+- [x] Multiple conversion methods (luminosity, block, edge, dither)
+- [x] Auto-sizing to terminal dimensions
 - [ ] Layer system implementation
 - [ ] Advanced tool implementations (fill, line, box)
 - [ ] Undo/redo stack
-- [ ] Enhanced timeline UI
 - [ ] Color picker improvements
 - [ ] GIF conversion quality improvements
 
