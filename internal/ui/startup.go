@@ -377,30 +377,31 @@ func (s StartupPage) renderHeader() string {
 	}
 	
 	logoStyle := lipgloss.NewStyle().
-		Foreground(logoColor).
-		Bold(false) // Less bold to reduce visual weight
+		Foreground(logoColor)
 	
-	// Tagline on same line as logo (compact header)
+	// Build compact header with proper alignment
+	logoRendered := logoStyle.Render(strings.TrimSpace(logo))
+	
+	// Tagline and version on separate line below logo
 	taglineStyle := lipgloss.NewStyle().
 		Foreground(s.theme.FgSecondary).
-		MarginLeft(3)
+		Align(lipgloss.Center)
 	
-	// Build compact header: LOGO  ASCII Art Animation Editor
-	headerLine1 := lipgloss.JoinHorizontal(
-		lipgloss.Bottom,
-		logoStyle.Render(strings.TrimSpace(logo)),
-		taglineStyle.Render("  ASCII Art Animation Editor"),
-	)
-	
-	headerLine2 := lipgloss.NewStyle().
+	versionStyle := lipgloss.NewStyle().
 		Foreground(s.theme.FgMuted).
-		MarginLeft(45).
-		Render("Convert • Create • Animate         v0.1.0")
+		Align(lipgloss.Center)
+	
+	tagline := taglineStyle.Render("ASCII Art Animation Editor")
+	subtitle := versionStyle.Render("Convert • Create • Animate         v0.1.0")
+	
+	// Center everything
+	width := 104 // Width for centering
 	
 	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		headerLine1,
-		headerLine2,
+		lipgloss.Center,
+		lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Render(logoRendered),
+		lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Render(tagline),
+		lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Render(subtitle),
 	)
 }
 
@@ -559,8 +560,8 @@ func (s StartupPage) renderRecentPanel() string {
 			timeAgo = strings.Replace(timeAgo, "days", "d", 1)
 			timeAgo = strings.Replace(timeAgo, "day", "d", 1)
 			
-			var lineStyle lipgloss.Style
 			var line string
+			var lineStyle lipgloss.Style
 			
 			if isSelected {
 				lineStyle = lipgloss.NewStyle().
@@ -576,24 +577,23 @@ func (s StartupPage) renderRecentPanel() string {
 					rf.Frames,
 					timeAgo,
 				)
+				items = append(items, lineStyle.Render(line))
 			} else {
+				// Build line without embedded styles to avoid escape sequence issues
+				line = fmt.Sprintf("  %d. %-22s %3df • %s",
+					i+1,
+					filename,
+					rf.Frames,
+					timeAgo,
+				)
+				
 				lineStyle = lipgloss.NewStyle().
 					Foreground(s.theme.FgSecondary).
 					Width(46).
 					Padding(0, 1)
 				
-				numStyle := lipgloss.NewStyle().
-					Foreground(s.theme.AccentInfo)
-				
-				line = fmt.Sprintf("  %s %-22s %3df • %s",
-					numStyle.Render(fmt.Sprintf("%d.", i+1)),
-					filename,
-					rf.Frames,
-					timeAgo,
-				)
+				items = append(items, lineStyle.Render(line))
 			}
-			
-			items = append(items, lineStyle.Render(line))
 		}
 		
 		items = append(items, "")
