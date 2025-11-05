@@ -21,6 +21,7 @@ type Options struct {
 	Method           string
 	Ratio            string // "fill", "fit", "original"
 	Chars            string
+	UseColors        bool   // If true, include RGB colors; if false, monochrome
 	ProgressCallback func(current, total int, message string)
 }
 
@@ -215,7 +216,7 @@ func convertImageToASCII(img image.Image, opts Options) *Frame {
 func convertPixel(r, g, b, a uint8, opts Options) (rune, string, string) {
 	// Handle transparency
 	if a < 128 {
-		return ' ', "#000000", "#000000"
+		return ' ', "#FFFFFF", "#000000"
 	}
 
 	// Calculate luminosity
@@ -241,9 +242,20 @@ func convertPixel(r, g, b, a uint8, opts Options) (rune, string, string) {
 		}
 	}
 
-	// Convert RGB to hex color
-	fg := fmt.Sprintf("#%02X%02X%02X", r, g, b)
-	bg := "#000000"
+	// Return colors based on mode
+	var fg, bg string
+	if opts.UseColors {
+		// Full RGB color mode
+		fg = fmt.Sprintf("#%02X%02X%02X", r, g, b)
+		bg = "#000000"
+	} else {
+		// Monochrome mode - quantize to 16 gray levels for consistency
+		// This reduces color variations and makes frames more similar
+		grayLevel := int(luminosity) / 16 // 0-15
+		quantized := uint8(grayLevel * 17) // Map back to 0-255 in steps of 17
+		fg = fmt.Sprintf("#%02X%02X%02X", quantized, quantized, quantized)
+		bg = "#000000"
+	}
 
 	return char, fg, bg
 }

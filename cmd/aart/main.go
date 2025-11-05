@@ -23,6 +23,7 @@ var (
 	method       = flag.String("method", "luminosity", "Conversion method: luminosity, average, block, dither")
 	ratio        = flag.String("ratio", "fill", "Aspect ratio handling: fill, fit, original")
 	chars        = flag.String("chars", "", "Custom character set for conversion (default: auto)")
+	useColors    = flag.Bool("colors", false, "Use RGB colors (default: monochrome grayscale)")
 	showHelp     = flag.Bool("help", false, "Show help message")
 	version      = flag.Bool("version", false, "Show version")
 	initConfig   = flag.Bool("init", false, "Initialize configuration directory")
@@ -179,7 +180,8 @@ func handleGifImport(cfg *config.Config) error {
 	fmt.Printf("Source: %s\n", *importGif)
 	fmt.Printf("Target: %dx%d @ %dfps\n", convertWidth, convertHeight, convertFPS)
 	fmt.Printf("Method: %s\n", convertMethod)
-	fmt.Printf("Ratio: %s\n\n", convertRatio)
+	fmt.Printf("Ratio: %s\n", convertRatio)
+	fmt.Printf("Colors: %v\n\n", *useColors)
 
 	// Progress tracking
 	lastPercent := 0
@@ -205,6 +207,7 @@ func handleGifImport(cfg *config.Config) error {
 		Method:           convertMethod,
 		Ratio:            convertRatio,
 		Chars:            *chars,
+		UseColors:        *useColors,
 		ProgressCallback: progressCallback,
 	})
 	if err != nil {
@@ -392,12 +395,15 @@ USAGE:
 OPTIONS:
     --import-gif <source>    Import GIF from URL or local path
     --output <file>          Save imported frames to file (default: open editor)
-    --width <int>            Canvas width (default: from config or 80)
-    --height <int>           Canvas height (default: from config or 24)
-    --fps <int>              Target FPS (default: from config or 12)
-    --method <string>        Conversion method (default: from config or luminosity)
+    --width <int>            Canvas width (default: auto from terminal)
+    --height <int>           Canvas height (default: auto from terminal)
+    --fps <int>              Target FPS (default: 12)
+    --method <string>        Conversion method (default: luminosity)
                              Options: luminosity, edge, block, dither
+    --ratio <string>         Aspect ratio (default: fill)
+                             Options: fill, fit, original
     --chars <string>         Custom character set for conversion
+    --colors                 Use RGB colors (default: monochrome grayscale)
     
 CONFIGURATION:
     --init                   Initialize ~/.config/aart directory
