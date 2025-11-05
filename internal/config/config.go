@@ -369,16 +369,11 @@ func (c *Config) GetStartupArtwork() string {
 	return DefaultStartupArtwork
 }
 
-// DefaultStartupArtwork is the default ASCII art logo
-const DefaultStartupArtwork = `
-    ▄▄▄        ▄▄▄       ██▀███  ▄▄▄█████▓
-   ▒████▄     ▒████▄    ▓██ ▒ ██▒▓  ██▒ ▓▒
-   ▒██  ▀█▄   ▒██  ▀█▄  ▓██ ░▄█ ▒▒ ▓██░ ▒░
-   ░██▄▄▄▄██  ░██▄▄▄▄██ ▒██▀▀█▄  ░ ▓██▓ ░ 
-    ▓█   ▓██▒  ▓█   ▓██▒░██▓ ▒██▒  ▒██▒ ░ 
-    ▒▒   ▓▒█░  ▒▒   ▓▒█░░ ▒▓ ░▒▓░  ▒ ░░   
-     ▒   ▒▒ ░   ▒   ▒▒ ░  ░▒ ░ ▒░    ░    
-     ░   ▒      ░   ▒     ░░   ░   ░      
-         ░  ░       ░  ░   ░              
-`
+// DefaultStartupArtwork is the default ASCII art logo (compact version for 80x24 compatibility)
+const DefaultStartupArtwork = `  ▄▄▄       ▄▄▄      ██▀███  ▄▄▄█████▓
+ ▒████▄    ▒████▄   ▓██ ▒ ██▒▓  ██▒ ▓▒
+ ▒██  ▀█▄  ▒██  ▀█▄ ▓██ ░▄█ ▒▒ ▓██░ ▒░
+ ░██▄▄▄▄██ ░██▄▄▄▄██▒██▀▀█▄  ░ ▓██▓ ░ 
+  ▓█   ▓██▒ ▓█   ▓██░██▓ ▒██▒  ▒██▒ ░ 
+  ▒▒   ▓▒█░ ▒▒   ▓▒█░ ▒▓ ░▒▓░  ▒ ░░   `
 

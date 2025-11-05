@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -331,33 +332,37 @@ func (s StartupPage) View() string {
 	
 	var b strings.Builder
 	
-	// Header with ASCII art logo
+	// Compact header with logo inline
 	b.WriteString(s.renderHeader())
-	b.WriteString("\n\n")
+	b.WriteString("\n")
 	
-	// Main menu and recent files side by side
+	// Main panels side by side
 	leftPanel := s.renderMenuPanel()
 	rightPanel := s.renderRecentPanel()
 	
-	// Combine panels
-	b.WriteString(lipgloss.JoinHorizontal(
+	panels := lipgloss.JoinHorizontal(
 		lipgloss.Top,
 		leftPanel,
 		"  ",
 		rightPanel,
-	))
+	)
 	
-	b.WriteString("\n\n")
+	b.WriteString(panels)
+	b.WriteString("\n")
 	
-	// Footer with tips
+	// Footer with complete navigation hints
 	b.WriteString(s.renderFooter())
 	
+	// Use top alignment instead of center for better 80x24 compatibility
+	// Only center horizontally
 	return lipgloss.Place(
 		s.width,
 		s.height,
 		lipgloss.Center,
-		lipgloss.Center,
+		lipgloss.Top,
 		b.String(),
+		lipgloss.WithWhitespaceChars(" "),
+		lipgloss.WithWhitespaceForeground(s.theme.BgPrimary),
 	)
 }
 
@@ -365,117 +370,129 @@ func (s StartupPage) renderHeader() string {
 	// Get custom or default ASCII art logo
 	logo := s.config.GetStartupArtwork()
 	
-	// Apply border if configured
-	if s.config.Startup.ArtworkBorder {
-		lines := strings.Split(strings.TrimSpace(logo), "\n")
-		maxWidth := 0
-		for _, line := range lines {
-			if len(line) > maxWidth {
-				maxWidth = len(line)
-			}
-		}
-		
-		borderStyle := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(s.theme.Border).
-			Padding(1, 2)
-		
-		logo = borderStyle.Render(logo)
-	}
-	
-	// Apply breathing effect
-	logoStyle := lipgloss.NewStyle().
-		Foreground(s.theme.AccentPrimary).
-		Bold(true)
-	
+	// Apply breathing effect to logo color
+	logoColor := s.theme.AccentPrimary
 	if s.config.Startup.BreathingEffect && s.breathing.CurrentAlpha() > 0.9 {
-		logoStyle = logoStyle.Foreground(s.theme.AccentSecondary)
+		logoColor = s.theme.AccentSecondary
 	}
 	
-	tagline := lipgloss.NewStyle().
-		Foreground(s.theme.FgSecondary).
-		Italic(true).
-		Render("ASCII Art Animation Editor")
+	logoStyle := lipgloss.NewStyle().
+		Foreground(logoColor).
+		Bold(false) // Less bold to reduce visual weight
 	
-	version := lipgloss.NewStyle().
+	// Tagline on same line as logo (compact header)
+	taglineStyle := lipgloss.NewStyle().
+		Foreground(s.theme.FgSecondary).
+		MarginLeft(3)
+	
+	// Build compact header: LOGO  ASCII Art Animation Editor
+	headerLine1 := lipgloss.JoinHorizontal(
+		lipgloss.Bottom,
+		logoStyle.Render(strings.TrimSpace(logo)),
+		taglineStyle.Render("  ASCII Art Animation Editor"),
+	)
+	
+	headerLine2 := lipgloss.NewStyle().
 		Foreground(s.theme.FgMuted).
-		Render("v0.1.0")
+		MarginLeft(45).
+		Render("Convert • Create • Animate         v0.1.0")
 	
 	return lipgloss.JoinVertical(
-		lipgloss.Center,
-		logoStyle.Render(logo),
-		tagline,
-		version,
+		lipgloss.Left,
+		headerLine1,
+		headerLine2,
 	)
 }
 
 func (s StartupPage) renderMenuPanel() string {
 	var menuItems []string
 	
-	titleStyle := lipgloss.NewStyle().
-		Foreground(s.theme.AccentPrimary).
-		Bold(true).
-		Padding(0, 2)
-	
+	// Title with visual active indicator
+	var titleBar string
 	if s.focusArea == "menu" {
-		titleStyle = titleStyle.Underline(true)
+		// Active panel - inverse title bar
+		titleStyle := lipgloss.NewStyle().
+			Foreground(s.theme.BgPrimary).
+			Background(s.theme.AccentPrimary).
+			Bold(true).
+			Width(46).
+			Padding(0, 1)
+		titleBar = titleStyle.Render("▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓")
+	} else {
+		// Inactive panel
+		titleStyle := lipgloss.NewStyle().
+			Foreground(s.theme.FgSecondary).
+			Width(46).
+			Padding(0, 1)
+		titleBar = titleStyle.Render("Quick Start")
 	}
 	
-	menuItems = append(menuItems, titleStyle.Render("✨ Quick Start"))
+	menuItems = append(menuItems, titleBar)
 	menuItems = append(menuItems, "")
 	
 	for i, opt := range s.options {
-		var style lipgloss.Style
-		prefix := "  "
+		isSelected := i == s.selectedOption && s.focusArea == "menu"
 		
-		if i == s.selectedOption && s.focusArea == "menu" {
-			// Selected item - highlighted
-			style = lipgloss.NewStyle().
-				Background(s.theme.Selection).
-				Foreground(s.theme.AccentPrimary).
+		// Build line without emoji - format: "▸ [N]ew Animation"
+		var line string
+		var lineStyle lipgloss.Style
+		
+		// Highlight first letter of title
+		firstLetter := strings.ToUpper(string(opt.Shortcut))
+		restOfTitle := opt.Title[1:]
+		
+		if isSelected {
+			// Selected: inverse video with arrow
+			lineStyle = lipgloss.NewStyle().
+				Foreground(s.theme.BgPrimary).
+				Background(s.theme.AccentPrimary).
 				Bold(true).
-				Width(45).
-				Padding(0, 2)
-			prefix = "▶ "
+				Width(46).
+				Padding(0, 1)
+			
+			keyStyle := lipgloss.NewStyle().
+				Foreground(s.theme.BgPrimary).
+				Background(s.theme.AccentSecondary).
+				Bold(true)
+			
+			line = fmt.Sprintf("▸ %s%s",
+				keyStyle.Render(fmt.Sprintf("[%s]", firstLetter)),
+				restOfTitle,
+			)
 		} else {
-			// Normal item
-			style = lipgloss.NewStyle().
+			// Not selected: muted
+			lineStyle = lipgloss.NewStyle().
 				Foreground(s.theme.FgSecondary).
-				Width(45).
-				Padding(0, 2)
+				Width(46).
+				Padding(0, 1)
+			
+			keyStyle := lipgloss.NewStyle().
+				Foreground(s.theme.AccentSecondary)
+			
+			line = fmt.Sprintf("  %s%s",
+				keyStyle.Render(fmt.Sprintf("[%s]", firstLetter)),
+				restOfTitle,
+			)
 		}
 		
-		shortcut := lipgloss.NewStyle().
-			Foreground(s.theme.FgMuted).
-			Render(fmt.Sprintf("[%s]", opt.Shortcut))
-		
-		line := fmt.Sprintf("%s%s %s  %s", 
-			prefix,
-			opt.Icon,
-			opt.Title,
-			shortcut,
-		)
-		
-		desc := lipgloss.NewStyle().
-			Foreground(s.theme.FgMuted).
-			Italic(true).
-			Render(opt.Description)
-		
-		menuItems = append(menuItems, style.Render(line))
-		if i == s.selectedOption && s.focusArea == "menu" {
-			menuItems = append(menuItems, "     "+desc)
-		}
+		menuItems = append(menuItems, lineStyle.Render(line))
 	}
 	
+	menuItems = append(menuItems, "")
+	
+	// Border style based on focus
 	borderStyle := s.theme.Border
+	borderType := lipgloss.RoundedBorder()
+	
 	if s.focusArea == "menu" {
-		borderStyle = s.theme.BorderActive
+		borderStyle = s.theme.AccentPrimary
+		borderType = lipgloss.ThickBorder()
 	}
 	
 	box := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
+		Border(borderType).
 		BorderForeground(borderStyle).
-		Padding(1, 2).
+		Padding(0, 1).
 		Width(50)
 	
 	return box.Render(strings.Join(menuItems, "\n"))
@@ -484,150 +501,208 @@ func (s StartupPage) renderMenuPanel() string {
 func (s StartupPage) renderRecentPanel() string {
 	var items []string
 	
-	titleStyle := lipgloss.NewStyle().
-		Foreground(s.theme.AccentSecondary).
-		Bold(true).
-		Padding(0, 2)
-	
+	// Title with Tab hint
+	var titleBar string
 	if s.focusArea == "recent" {
-		titleStyle = titleStyle.Foreground(s.theme.AccentPrimary).Underline(true)
+		// Active panel - inverse title bar
+		titleStyle := lipgloss.NewStyle().
+			Foreground(s.theme.BgPrimary).
+			Background(s.theme.AccentPrimary).
+			Bold(true).
+			Width(46).
+			Padding(0, 1)
+		titleBar = titleStyle.Render("▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓")
+	} else {
+		titleStyle := lipgloss.NewStyle().
+			Foreground(s.theme.FgSecondary).
+			Width(46).
+			Padding(0, 1)
+		tabHintStyle := lipgloss.NewStyle().
+			Foreground(s.theme.FgMuted)
+		titleBar = titleStyle.Render("Recent Files") + tabHintStyle.Render("  [Tab]")
 	}
 	
-	items = append(items, titleStyle.Render("📁 Recent Files"))
+	items = append(items, titleBar)
 	items = append(items, "")
 	
 	if len(s.recentFiles) == 0 {
 		emptyStyle := lipgloss.NewStyle().
 			Foreground(s.theme.FgMuted).
 			Italic(true).
-			Padding(0, 2)
+			Padding(0, 1)
 		items = append(items, emptyStyle.Render("No recent files"))
 		items = append(items, "")
-		items = append(items, emptyStyle.Render("Start by creating a new"))
-		items = append(items, emptyStyle.Render("animation or importing a GIF!"))
+		items = append(items, emptyStyle.Render("Press 'n' to create new animation"))
+		items = append(items, emptyStyle.Render("Press 'i' to import a GIF"))
 	} else {
+		// Compact single-line format
 		for i, rf := range s.recentFiles {
-			if i >= 5 {
+			if i >= 8 { // Show more files now that we're compact
 				break
 			}
 			
 			isSelected := s.focusArea == "recent" && i == s.selectedRecent
 			
-			var fileStyle lipgloss.Style
-			prefix := "  "
-			
-			if isSelected {
-				fileStyle = lipgloss.NewStyle().
-					Background(s.theme.Selection).
-					Foreground(s.theme.AccentPrimary).
-					Bold(true).
-					Width(45).
-					Padding(0, 1)
-				prefix = "▶ "
-			} else {
-				fileStyle = lipgloss.NewStyle().
-					Foreground(s.theme.FgSecondary).
-					Width(45).
-					Padding(0, 1)
+			// Format: "1. filename.aart         150f • 13m"
+			filename := filepath.Base(rf.Path)
+			if len(filename) > 22 {
+				filename = filename[:19] + "..."
 			}
-			
-			numberStyle := lipgloss.NewStyle().
-				Foreground(s.theme.AccentInfo).
-				Bold(true)
 			
 			timeAgo := formatTimeAgo(rf.Timestamp)
-			timeStyle := lipgloss.NewStyle().
-				Foreground(s.theme.FgMuted)
+			// Compact time format
+			timeAgo = strings.Replace(timeAgo, " ago", "", 1)
+			timeAgo = strings.Replace(timeAgo, "minutes", "m", 1)
+			timeAgo = strings.Replace(timeAgo, "minute", "m", 1)
+			timeAgo = strings.Replace(timeAgo, "hours", "h", 1)
+			timeAgo = strings.Replace(timeAgo, "hour", "h", 1)
+			timeAgo = strings.Replace(timeAgo, "days", "d", 1)
+			timeAgo = strings.Replace(timeAgo, "day", "d", 1)
 			
-			items = append(items, fileStyle.Render(fmt.Sprintf(
-				"%s%s %s",
-				prefix,
-				numberStyle.Render(fmt.Sprintf("[%d]", i+1)),
-				truncate(rf.Path, 35),
-			)))
+			var lineStyle lipgloss.Style
+			var line string
 			
-			detailStyle := fileStyle
-			if !isSelected {
-				detailStyle = lipgloss.NewStyle().
-					Foreground(s.theme.FgMuted).
-					Width(45).
+			if isSelected {
+				lineStyle = lipgloss.NewStyle().
+					Foreground(s.theme.BgPrimary).
+					Background(s.theme.AccentPrimary).
+					Bold(true).
+					Width(46).
 					Padding(0, 1)
+				
+				line = fmt.Sprintf("▸ %d. %-22s %3df • %s",
+					i+1,
+					filename,
+					rf.Frames,
+					timeAgo,
+				)
+			} else {
+				lineStyle = lipgloss.NewStyle().
+					Foreground(s.theme.FgSecondary).
+					Width(46).
+					Padding(0, 1)
+				
+				numStyle := lipgloss.NewStyle().
+					Foreground(s.theme.AccentInfo)
+				
+				line = fmt.Sprintf("  %s %-22s %3df • %s",
+					numStyle.Render(fmt.Sprintf("%d.", i+1)),
+					filename,
+					rf.Frames,
+					timeAgo,
+				)
 			}
 			
-			items = append(items, detailStyle.Render(fmt.Sprintf(
-				"    %d frames • %s",
-				rf.Frames,
-				timeStyle.Render(timeAgo),
-			)))
-			items = append(items, "")
+			items = append(items, lineStyle.Render(line))
 		}
+		
+		items = append(items, "")
+		
+		// Action hints
+		hintStyle := lipgloss.NewStyle().
+			Foreground(s.theme.FgMuted).
+			Padding(0, 1)
+		items = append(items, hintStyle.Render("Enter: open │ Del: remove"))
 	}
 	
-	// Statistics
 	items = append(items, "")
+	
+	// Compact statistics
 	statsStyle := lipgloss.NewStyle().
 		Foreground(s.theme.FgMuted).
-		Padding(0, 2)
-	items = append(items, statsStyle.Render("━━━━━━━━━━━━━━━━━━━━━━━━━━"))
+		Padding(0, 1)
 	
-	stats := fmt.Sprintf("Theme: %s", s.config.UI.Theme)
-	items = append(items, statsStyle.Render(stats))
+	divider := lipgloss.NewStyle().
+		Foreground(s.theme.Border).
+		Render("─────────────────────────────────────────────")
+	items = append(items, divider)
 	
-	stats = fmt.Sprintf("Default: %dx%d @ %dfps",
+	stats := fmt.Sprintf("Default: %dx%d @ %dfps",
 		s.config.Editor.DefaultWidth,
 		s.config.Editor.DefaultHeight,
 		s.config.Editor.DefaultFPS,
 	)
 	items = append(items, statsStyle.Render(stats))
 	
+	methodStats := fmt.Sprintf("Method: %s", s.config.Converter.DefaultMethod)
+	items = append(items, statsStyle.Render(methodStats))
+	
+	items = append(items, "")
+	
+	// Tip with counter
+	tipStyle := lipgloss.NewStyle().
+		Foreground(s.theme.FgMuted).
+		Italic(true).
+		Padding(0, 1)
+	
+	tips := []string{
+		"Use luminosity method for best quality",
+		"Press 't' to change theme instantly",
+		"Import GIFs from URLs with 'i' key",
+		"Use --ratio fit to preserve aspect",
+		"Edit config.yml for custom settings",
+		"Try edge method for wireframe style",
+		"Block method gives solid appearance",
+		"Number keys quick-open recent files",
+	}
+	
+	tipIdx := int(s.currentTime.Unix()/5) % len(tips)
+	
+	// Breathing effect on tip rotation indicator
+	rotateIcon := "⟳"
+	if s.breathing.CurrentAlpha() > 0.95 {
+		rotateIcon = "⟲"
+	}
+	
+	tipLine := fmt.Sprintf("Tip %d/%d: %s %s",
+		tipIdx+1,
+		len(tips),
+		tips[tipIdx],
+		rotateIcon,
+	)
+	items = append(items, tipStyle.Render(tipLine))
+	
+	// Border style based on focus
 	borderStyle := s.theme.Border
+	borderType := lipgloss.RoundedBorder()
+	
 	if s.focusArea == "recent" {
-		borderStyle = s.theme.BorderActive
+		borderStyle = s.theme.AccentPrimary
+		borderType = lipgloss.ThickBorder()
 	}
 	
 	box := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
+		Border(borderType).
 		BorderForeground(borderStyle).
-		Padding(1, 2).
+		Padding(0, 1).
 		Width(50)
 	
 	return box.Render(strings.Join(items, "\n"))
 }
 
 func (s StartupPage) renderFooter() string {
-	tipStyle := lipgloss.NewStyle().
-		Foreground(s.theme.FgMuted).
-		Italic(true)
-	
-	tips := []string{
-		"💡 Pro tip: Press Tab to switch between menu and recent files",
-		"💡 Pro tip: Press the number key to quickly open recent files",
-		"💡 Pro tip: Use hjkl or arrow keys to navigate",
-		"💡 Pro tip: Press 't' to change themes",
-		"💡 Pro tip: Import any GIF with the 'i' key",
-		"💡 Pro tip: Press 'c' to edit config.yml with $EDITOR",
-	}
-	
-	// Rotate tips based on time
-	tipIdx := int(s.currentTime.Unix()/5) % len(tips)
-	tip := tips[tipIdx]
-	
-	// Breathing effect on tip
-	if s.breathing.CurrentAlpha() > 0.95 {
-		tipStyle = tipStyle.Foreground(s.theme.AccentInfo)
-	}
-	
 	hintStyle := lipgloss.NewStyle().
 		Foreground(s.theme.FgSecondary).
 		Bold(true)
 	
-	hints := "hjkl/↑↓: navigate │ Tab: switch panel │ Enter: select │ q: quit"
+	divStyle := lipgloss.NewStyle().
+		Foreground(s.theme.FgMuted)
 	
-	return lipgloss.JoinVertical(
-		lipgloss.Center,
-		lipgloss.NewStyle().Width(100).Align(lipgloss.Center).Render(hintStyle.Render(hints)),
-		lipgloss.NewStyle().Width(100).Align(lipgloss.Center).Render(tipStyle.Render(tip)),
-	)
+	// Complete navigation hints
+	hints := hintStyle.Render("hjkl:navigate") +
+		divStyle.Render(" │ ") +
+		hintStyle.Render("Tab:switch") +
+		divStyle.Render(" │ ") +
+		hintStyle.Render("Enter:select") +
+		divStyle.Render(" │ ") +
+		hintStyle.Render("Esc:cancel") +
+		divStyle.Render(" │ ") +
+		hintStyle.Render("q:quit")
+	
+	return lipgloss.NewStyle().
+		Width(100).
+		Align(lipgloss.Center).
+		Render(hints)
 }
 
 // Helper functions
