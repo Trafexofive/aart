@@ -1,38 +1,61 @@
 # aart - ASCII Art Animation Editor
 
-A terminal-based ASCII art animation editor built with Go and Bubbletea.
+A terminal-based ASCII art animation editor with GIF import capabilities built with Go and Bubbletea.
 
 ## Features
 
-### Currently Working ✅
-- **Canvas**: 80x24 character canvas with Braille art support
-- **Timeline**: 24-frame animation timeline with visual frame indicator
-- **Playback**: Play/pause animations at 12fps
-- **Navigation**: hjkl/arrow keys for cursor movement
-- **Drawing**: 
-  - Press `d` to place current character
-  - Press `i` for insert mode - type characters directly
-- **Frame Navigation**: `,` and `.` to seek between frames
-- **Tool Selection**: p/f/s/l/b/t/e/m for different tools (pencil is active)
+### Core Editor ✅
+- **Interactive Canvas**: Full-featured drawing canvas with character-level editing
+- **Timeline**: Multi-frame animation timeline with visual indicators
+- **Playback**: Smooth animation playback with configurable FPS
+- **Navigation**: Vim-style hjkl navigation with arrow key support
+- **Drawing Tools**: 
+  - Pencil mode for direct character placement
+  - Insert mode for text entry
+  - Multiple tool selections (fill, select, line, box, text, eyedropper, move)
+- **Frame Management**: Navigate, create, and edit animation frames
 - **View Controls**: 
-  - `g` for grid toggle
-  - `+/-` for zoom
-  - `0` to reset zoom
-- **Radial Wheel**: `ctrl-j`/`ctrl-k` to cycle sections, `enter` to expand, `esc` to collapse
-- **Command Mode**: `:` to enter command mode
-- **Status Bar**: Shows file info, frame count, tool, FPS, layer info
+  - Grid overlay toggle
+  - Zoom in/out with reset
+  - Zen mode for distraction-free editing
+- **Radial Wheel UI**: Intuitive ctrl-j/k navigation through tool sections
+- **Command Mode**: Vim-style command interface for advanced operations
+- **Status Bar**: Real-time display of file info, frame, tool, FPS, and layer data
 
-### Radial Wheel Sections
-- **HELP**: Keyboard shortcuts
-- **TOOLS**: Pencil, fill, select, line, box, text, eyedropper, move
-- **COLORS**: Color picker (stubbed)
-- **EXPORT**: Export formats (stubbed)
-- **IMPORT**: Import options (stubbed)
-- **LAYERS**: Layer management (stubbed)
+### GIF Import ✅
+- **URL Support**: Direct import from web URLs
+- **Local File Import**: Load GIFs from filesystem
+- **Multiple Conversion Methods**:
+  - **luminosity**: Brightness-based conversion (default)
+  - **block**: Block character style (░▒▓█)
+  - **edge**: Edge detection wireframe
+  - **dither**: Dithered gradients
+- **Smart Sizing**: Auto-detect terminal dimensions or specify custom size
+- **FPS Control**: Match original or set custom frame rate
+- **Aspect Ratio Modes**: Fill, original, or custom ratios
 
-## Build & Run
+### Configuration System ✅
+- **Config File**: `~/.config/aart/config.yml` for persistent settings
+- **Project Storage**: `~/.config/aart/` directory for recent files and cache
+- **Custom File Format**: `.aa` format for native ASCII art storage
+- **Export Formats**: CSV, JSON, ANSI, plain text
+
+### UI Features ✅
+- **Startup Page**: Quick access to common actions
+- **Recent Files**: Navigate and open recent projects
+- **Theme System**: Configurable color schemes
+- **Loader Animations**: Zen-like loading indicators
+- **Help System**: Comprehensive keyboard shortcut guide
+
+## Installation
+
+### From Source
 
 ```bash
+# Clone the repository
+git clone https://github.com/yourusername/aart.git
+cd aart
+
 # Install dependencies
 go mod download
 
@@ -40,76 +63,214 @@ go mod download
 make build
 
 # Run
-make run
-# or
 ./aart
+```
+
+### Quick Start
+
+```bash
+# Start with blank canvas
+./aart
+
+# Import a GIF from URL
+./aart --import-gif https://media.giphy.com/media/example.gif
+
+# Import with custom settings
+./aart --import-gif animation.gif --fps 60 --width 200 --height 60 --method dither
+
+# Auto-size to terminal
+./aart --import-gif animation.gif --ratio fill
 ```
 
 ## Keyboard Shortcuts
 
 ### Normal Mode
-- `hjkl` or arrow keys - Move cursor
-- `d` - Draw current character at cursor
-- `i` - Enter insert mode
+- `hjkl` / arrows - Move cursor
+- `d` - Draw current character
+- `i` - Insert mode
 - `space` - Play/pause animation
-- `,` `.` - Seek to previous/next frame
+- `,` `.` - Previous/next frame
 - `+` `-` - Zoom in/out
 - `0` - Reset zoom
 - `g` - Toggle grid
+- `z` - Toggle zen mode
 - `p` `f` `s` `l` `b` `t` `e` `m` - Select tool
 - `ctrl-j` `ctrl-k` - Cycle wheel sections
-- `enter` - Expand wheel section
-- `esc` - Collapse wheel
-- `:` - Enter command mode
+- `enter` - Expand wheel
+- `esc` - Collapse wheel / Return to normal mode
+- `:` - Command mode
+- `?` - Show help
 - `q` - Quit
 
 ### Insert Mode
-- Any character - Type at cursor position
+- Type normally - Characters appear at cursor
+- Arrow keys - Navigate while typing
 - `esc` - Return to normal mode
 
 ### Command Mode
-- Type command and press `enter`
-- `esc` - Cancel and return to normal mode
+Commands available:
+- `:export <file>` - Export animation
+- `:import <file>` - Import file
+- `:new` - New animation
+- `:save <file>` - Save to .aa format
+- `:quit` or `:q` - Exit
+- `:help` - Show help
+
+## Configuration
+
+aart uses a YAML configuration file located at `~/.config/aart/config.yml`.
+
+### Config File Structure
+
+```yaml
+editor:
+  default_width: 80
+  default_height: 24
+  default_fps: 12
+  auto_save: true
+  
+theme:
+  name: "default"
+  colors:
+    background: "#1a1a1a"
+    foreground: "#ffffff"
+    accent: "#00ff00"
+  
+import:
+  default_method: "luminosity"
+  character_ramp: " .:-=+*#%@"
+  preserve_aspect: true
+  
+recent_files:
+  max_count: 10
+  
+paths:
+  projects: "~/.config/aart/projects"
+  cache: "~/.config/aart/cache"
+```
+
+### Edit Config
+
+```bash
+# Open config in $EDITOR
+./aart --config
+
+# Or edit directly via startup menu (option: Edit Config)
+```
+
+## File Formats
+
+### Native Format (.aa)
+
+aart's native format stores complete animation data including layers, metadata, and frame information.
+
+```bash
+# Save
+:save myanimation.aa
+
+# Export to various formats
+:export output.ans     # ANSI art
+:export output.txt     # Plain text
+:export output.json    # JSON metadata + frames
+:export output.csv     # CSV format
+```
+
+### Import/Export
+
+- **Import**: GIF, ANSI (.ans), plain text (.txt)
+- **Export**: ANSI (.ans), plain text (.txt), JSON, CSV, native (.aa)
 
 ## Architecture
 
 ```
-cmd/aart/          - Main entry point
-internal/ui/       - Bubbletea UI model and rendering
-internal/canvas/   - Canvas and frame management (TODO)
-internal/timeline/ - Timeline and playback (TODO)
+cmd/aart/           - Main entry point and CLI argument parsing
+internal/
+  ├── ui/           - Bubbletea UI components
+  │   ├── model.go  - Main UI model and state
+  │   ├── startup.go- Startup page
+  │   ├── timeline.go- Timeline rendering
+  │   └── wheel.go  - Radial wheel navigation
+  ├── canvas/       - Canvas and frame management
+  ├── config/       - Configuration system
+  ├── converter/    - GIF to ASCII conversion
+  └── export/       - Export format handlers
+pkg/
+  └── asciiart/     - Core ASCII art utilities
 ```
 
-## Next Steps
+## Development Roadmap
 
-Based on STARTING_BUILD_REF.md:
+### Phase 1: Core Editor ✅
+- [x] Basic canvas with cursor navigation
+- [x] Timeline and playback system
+- [x] Radial wheel UI
+- [x] Drawing tools foundation
+- [x] Command mode
+- [x] Status bar and help system
 
-1. **Drawing Engine**
-   - Persistent drawing in insert mode
-   - Tool implementations (fill, line, box, selection)
-   
-2. **Layers**
-   - Multiple layers per frame
-   - Opacity and blending
-   - Layer visibility toggle
+### Phase 2: GIF Import ✅
+- [x] URL and file support
+- [x] Multiple conversion methods
+- [x] Terminal size auto-detection
+- [x] FPS control
+- [x] Aspect ratio modes
 
-3. **Export/Import**
-   - ANSI format (.ans)
-   - Plain text (.txt)
-   - Native format (.aart)
-   - Image import with character conversion
+### Phase 3: Configuration ✅
+- [x] Config file system (~/.config/aart/)
+- [x] Recent files management
+- [x] Theme system
+- [x] Startup page
 
-4. **Advanced Canvas**
-   - Actual zoom rendering
-   - Grid overlay display
-   - Undo/redo stack
-   - Copy/paste
+### Phase 4: Current Focus 🚧
+- [ ] Layer system implementation
+- [ ] Advanced tool implementations (fill, line, box)
+- [ ] Undo/redo stack
+- [ ] Enhanced timeline UI
+- [ ] Color picker improvements
+- [ ] GIF conversion quality improvements
 
-5. **UI Polish**
-   - Wheel rendering fix for wide terminals
-   - Color picker implementation
-   - Better timeline for >24 frames
-   - Mouse support
+### Phase 5: Polish
+- [ ] Mouse support
+- [ ] Selection and clipboard operations
+- [ ] Grid overlay rendering
+- [ ] Minimap for large canvases
+- [ ] Plugin system
+- [ ] Tutorial/onboarding
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues or pull requests.
+
+### Areas for Contribution
+
+- **Conversion Methods**: New algorithms for GIF to ASCII conversion
+- **Tools**: Advanced drawing tools (bezier curves, spray paint, etc.)
+- **Export Formats**: Additional output formats
+- **Themes**: Color schemes and UI themes
+- **Performance**: Optimization for large canvases and long animations
+- **Documentation**: Tutorials, examples, and guides
+
+## Design Philosophy
+
+aart follows these principles:
+
+1. **Keyboard-First**: All features accessible via keyboard shortcuts
+2. **Vim-Inspired**: Modal editing with familiar keybindings
+3. **Terminal Native**: Works beautifully in any terminal emulator
+4. **Fast & Responsive**: Immediate visual feedback
+5. **Zen Interface**: Clean, distraction-free UI that gets out of your way
+
+## Credits
+
+Built with:
+- [Bubbletea](https://github.com/charmbracelet/bubbletea) - Terminal UI framework
+- [Lipgloss](https://github.com/charmbracelet/lipgloss) - Style and layout
+- [Bubble Tea Components](https://github.com/charmbracelet/bubbles) - UI components
+
+Inspired by:
+- vim's modal editing
+- asciinema's terminal recording
+- The demoscene ASCII art community
 
 ## Design Reference
 
@@ -117,53 +278,65 @@ See `notes/designs/design_reference.md` for the complete UI design specification
 
 ## License
 
-MIT
+MIT License - see LICENSE file for details.
 
-## GIF Import Feature
+---
 
-Import animated GIFs and convert them to ASCII art animations!
+Made with ❤️ for terminal enthusiasts and ASCII artists
 
-### Usage
+## GIF Import
+
+Import animated GIFs and convert them to ASCII art animations with multiple conversion methods.
+
+### Basic Usage
 
 ```bash
 # Import from local file
-aart --import-gif animation.gif
+./aart --import-gif animation.gif
 
 # Import from URL
-aart --import-gif https://example.com/animation.gif
+./aart --import-gif https://example.com/animation.gif
 
-# Customize conversion
-aart --import-gif animation.gif --width 120 --height 40 --method block
+# Custom dimensions
+./aart --import-gif animation.gif --width 120 --height 40
 
-# Save to file instead of opening editor
-aart --import-gif animation.gif --output converted.aart
+# Auto-size to terminal
+./aart --import-gif animation.gif --ratio fill
+
+# High FPS conversion
+./aart --import-gif animation.gif --fps 60 --method dither
 ```
 
 ### Conversion Methods
 
-- **luminosity** (default): Converts based on pixel brightness using extended character set
-- **block**: Uses block characters (░▒▓█) for a solid, blocky look
+- **luminosity** (default): Brightness-based using extended character set ` .:-=+*#%@`
+- **block**: Block characters (░▒▓█) for solid, blocky appearance
 - **edge**: Edge detection with line characters for wireframe effect
-- **dither**: Dithered output for smoother gradients
+- **dither**: Floyd-Steinberg dithering for smoother gradients
 
 ### Options
 
-- `--width <int>`: Canvas width (default: 80)
-- `--height <int>`: Canvas height (default: 24)
-- `--fps <int>`: Target FPS (default: 12)
-- `--method <string>`: Conversion method
-- `--chars <string>`: Custom character set for conversion
-- `--output <file>`: Save to file instead of opening editor
+- `--import-gif <url|file>`: Source GIF file or URL
+- `--width <int>`: Canvas width (auto-detected from terminal if not specified)
+- `--height <int>`: Canvas height (auto-detected from terminal if not specified)
+- `--fps <int>`: Target FPS (default: matches source GIF)
+- `--method <string>`: Conversion method (luminosity|block|edge|dither)
+- `--ratio <string>`: Aspect ratio mode (fill|original)
+- `--chars <string>`: Custom character ramp for luminosity method
+- `--output <file>`: Save to .aa file instead of opening editor
 
 ### Examples
 
 ```bash
-# Small, blocky animation
-aart --import-gif dance.gif --width 40 --height 20 --method block
+# Small blocky animation
+./aart --import-gif dance.gif --width 40 --height 20 --method block
 
-# Large, detailed conversion
-aart --import-gif movie.gif --width 160 --height 60 --method luminosity
+# Large detailed conversion that fills terminal
+./aart --import-gif movie.gif --ratio fill --method luminosity
+
+# High FPS with dithering
+./aart --import-gif smooth.gif --fps 60 --method dither --width 200 --height 60
 
 # Custom character ramp
-aart --import-gif art.gif --chars " .:-=+*#%@"
+./aart --import-gif art.gif --chars " .'`^\",:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$"
 ```
