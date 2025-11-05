@@ -19,6 +19,7 @@ type Options struct {
 	Height           int
 	FPS              int
 	Method           string
+	Ratio            string // "fill", "fit", "original"
 	Chars            string
 	ProgressCallback func(current, total int, message string)
 }
@@ -34,6 +35,17 @@ type Cell struct {
 	Char rune
 	FG   string
 	BG   string
+}
+
+// ImportGIF is a convenience wrapper for UI that returns frames directly
+func ImportGIF(source string, width, height, fps int, method, ratio string) ([]*Frame, error) {
+	return ConvertGifToFrames(source, Options{
+		Width:  width,
+		Height: height,
+		FPS:    fps,
+		Method: method,
+		Ratio:  ratio,
+	})
 }
 
 // ConvertGifToFrames converts a GIF (from URL or file) to ASCII frames

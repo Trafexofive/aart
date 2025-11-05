@@ -71,6 +71,7 @@ type Frame struct {
 	Height   int
 	Cells    [][]Cell
 	Modified bool
+	Delay    int // milliseconds per frame
 }
 
 type Layer struct {

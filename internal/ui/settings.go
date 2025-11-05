@@ -244,7 +244,6 @@ func (s SettingsScreen) View() string {
 			}
 		}
 		
-		nameStyle := lipgloss.NewStyle().Width(20)
 		valueStyle := lipgloss.NewStyle().
 			Foreground(s.theme.AccentSecondary).
 			Bold(true)

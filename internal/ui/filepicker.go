@@ -9,7 +9,44 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mlamkadm/aart/internal/config"
+	"github.com/mlamkadm/aart/internal/fileformat"
 )
+
+// convertAARTToFrames converts fileformat AART to UI frames
+func convertAARTToFrames(aart *fileformat.AartFile) []*Frame {
+	frames := make([]*Frame, aart.FrameCount())
+	
+	for i := 0; i < aart.FrameCount(); i++ {
+		aartFrame := aart.Frames[i]
+		frame := &Frame{
+			Width:  aart.Canvas.Width,
+			Height: aart.Canvas.Height,
+			Delay:  aartFrame.Duration,
+		}
+		
+		// Initialize cells
+		frame.Cells = make([][]Cell, frame.Height)
+		for y := 0; y < frame.Height; y++ {
+			frame.Cells[y] = make([]Cell, frame.Width)
+			for x := 0; x < frame.Width; x++ {
+				if y < len(aartFrame.Cells) && x < len(aartFrame.Cells[y]) {
+					cell := aartFrame.Cells[y][x]
+					frame.Cells[y][x] = Cell{
+						Char: rune(cell.Char[0]), // Convert string to rune
+						FG:   cell.Foreground,
+						BG:   cell.Background,
+					}
+				} else {
+					frame.Cells[y][x] = Cell{Char: ' ', FG: "#FFFFFF", BG: "#000000"}
+				}
+			}
+		}
+		
+		frames[i] = frame
+	}
+	
+	return frames
+}
 
 // FilePickerScreen allows browsing and selecting files
 type FilePickerScreen struct {
@@ -161,19 +198,22 @@ func (f FilePickerScreen) handleSelect() (tea.Model, tea.Cmd) {
 	// File selected - load it
 	fullPath := filepath.Join(f.currentDir, selected.Name())
 	
-	// Load the file and open editor
-	frames, err := LoadFile(fullPath)
+	// Load the .aart file
+	aartData, err := fileformat.Load(fullPath)
 	if err != nil {
 		// TODO: Show error message
 		return f, nil
 	}
 	
 	// Add to recent files
-	f.config.AddRecentFile(fullPath, len(frames))
+	f.config.AddRecentFile(fullPath, aartData.FrameCount())
 	config.Save(f.config)
 	
+	// Convert to UI frames
+	frames := convertAARTToFrames(aartData)
+	
 	// Open editor with loaded frames
-	return newModelWithConfigAndFrames(frames, fullPath, f.config), nil
+	return newModelWithConfig(frames, fullPath, f.config), nil
 }
 
 func (f FilePickerScreen) View() string {

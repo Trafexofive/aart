@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,10 +17,11 @@ import (
 var (
 	importGif    = flag.String("import-gif", "", "Import GIF file (URL or local path)")
 	outputFile   = flag.String("output", "", "Output file (default: opens in editor)")
-	width        = flag.Int("width", 80, "Canvas width for import")
-	height       = flag.Int("height", 24, "Canvas height for import")
+	width        = flag.Int("width", 0, "Canvas width for import (0 = auto-detect from terminal)")
+	height       = flag.Int("height", 0, "Canvas height for import (0 = auto-detect from terminal)")
 	fps          = flag.Int("fps", 12, "Target FPS for imported animation")
-	method       = flag.String("method", "luminosity", "Conversion method: luminosity, edge, block, dither")
+	method       = flag.String("method", "luminosity", "Conversion method: luminosity, average, block, dither")
+	ratio        = flag.String("ratio", "fill", "Aspect ratio handling: fill, fit, original")
 	chars        = flag.String("chars", "", "Custom character set for conversion (default: auto)")
 	showHelp     = flag.Bool("help", false, "Show help message")
 	version      = flag.Bool("version", false, "Show version")
@@ -139,29 +141,45 @@ func main() {
 }
 
 func handleGifImport(cfg *config.Config) error {
-	fmt.Printf("🎨 aart - GIF to ASCII Converter\n\n")
-	fmt.Printf("Source: %s\n", *importGif)
-	fmt.Printf("Target: %dx%d @ %dfps\n", *width, *height, *fps)
-	fmt.Printf("Method: %s\n\n", *method)
-
-	// Use config defaults if not specified
+	// Auto-detect terminal size if width/height not specified
 	convertWidth := *width
 	convertHeight := *height
+	
+	if convertWidth == 0 || convertHeight == 0 {
+		termWidth, termHeight := getTerminalSize()
+		if convertWidth == 0 {
+			// Use 80% of terminal width, accounting for UI chrome
+			convertWidth = int(float64(termWidth) * 0.8)
+			if convertWidth < 40 {
+				convertWidth = cfg.Editor.DefaultWidth
+			}
+		}
+		if convertHeight == 0 {
+			// Use 80% of terminal height, accounting for UI chrome
+			convertHeight = int(float64(termHeight-10) * 0.8)
+			if convertHeight < 20 {
+				convertHeight = cfg.Editor.DefaultHeight
+			}
+		}
+	}
+	
 	convertFPS := *fps
 	convertMethod := *method
+	convertRatio := *ratio
 	
-	if convertWidth == 80 {
-		convertWidth = cfg.Editor.DefaultWidth
-	}
-	if convertHeight == 24 {
-		convertHeight = cfg.Editor.DefaultHeight
-	}
-	if convertFPS == 12 {
+	// Use config defaults if still at defaults
+	if convertFPS == 12 && cfg.Editor.DefaultFPS != 12 {
 		convertFPS = cfg.Editor.DefaultFPS
 	}
 	if convertMethod == "luminosity" && cfg.Converter.DefaultMethod != "" {
 		convertMethod = cfg.Converter.DefaultMethod
 	}
+	
+	fmt.Printf("🎨 aart - GIF to ASCII Converter\n\n")
+	fmt.Printf("Source: %s\n", *importGif)
+	fmt.Printf("Target: %dx%d @ %dfps\n", convertWidth, convertHeight, convertFPS)
+	fmt.Printf("Method: %s\n", convertMethod)
+	fmt.Printf("Ratio: %s\n\n", convertRatio)
 
 	// Progress tracking
 	lastPercent := 0
@@ -185,6 +203,7 @@ func handleGifImport(cfg *config.Config) error {
 		Height:           convertHeight,
 		FPS:              convertFPS,
 		Method:           convertMethod,
+		Ratio:            convertRatio,
 		Chars:            *chars,
 		ProgressCallback: progressCallback,
 	})
@@ -244,6 +263,40 @@ func handleGifImport(cfg *config.Config) error {
 	}
 
 	return nil
+}
+
+// getTerminalSize returns the current terminal dimensions
+func getTerminalSize() (width, height int) {
+	// Try to get terminal size using TIOCGWINSZ ioctl
+	type winsize struct {
+		Row    uint16
+		Col    uint16
+		Xpixel uint16
+		Ypixel uint16
+	}
+	
+	// This is a simplified version - in production you'd use golang.org/x/term
+	// For now, use environment variables or defaults
+	width = 120
+	height = 40
+	
+	// Try to get from stty command
+	cmd := exec.Command("stty", "size")
+	cmd.Stdin = os.Stdin
+	out, err := cmd.Output()
+	if err == nil {
+		fmt.Sscanf(string(out), "%d %d", &height, &width)
+	}
+	
+	// Fallback to reasonable defaults if detection failed
+	if width == 0 {
+		width = 120
+	}
+	if height == 0 {
+		height = 40
+	}
+	
+	return width, height
 }
 
 func printConfig(cfg *config.Config) {

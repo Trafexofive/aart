@@ -11,6 +11,36 @@ import (
 	"github.com/mlamkadm/aart/internal/converter"
 )
 
+// convertConverterToUIFrames converts converter frames to UI frames
+func convertConverterToUIFrames(convFrames []*converter.Frame) []*Frame {
+	uiFrames := make([]*Frame, len(convFrames))
+	
+	for i, cf := range convFrames {
+		uf := &Frame{
+			Width:  cf.Width,
+			Height: cf.Height,
+			Delay:  cf.Delay,
+		}
+		
+		// Copy cells
+		uf.Cells = make([][]Cell, cf.Height)
+		for y := 0; y < cf.Height; y++ {
+			uf.Cells[y] = make([]Cell, cf.Width)
+			for x := 0; x < cf.Width; x++ {
+				uf.Cells[y][x] = Cell{
+					Char: cf.Cells[y][x].Char,
+					FG:   cf.Cells[y][x].FG,
+					BG:   cf.Cells[y][x].BG,
+				}
+			}
+		}
+		
+		uiFrames[i] = uf
+	}
+	
+	return uiFrames
+}
+
 // ImportProgressScreen shows GIF import progress
 type ImportProgressScreen struct {
 	width    int
@@ -28,7 +58,7 @@ type ImportProgressScreen struct {
 	totalFrames  int
 	done         bool
 	err          error
-	result       []*Frame
+	result       []*converter.Frame
 	startTime    time.Time
 }
 
@@ -61,7 +91,7 @@ func (p ImportProgressScreen) Init() tea.Cmd {
 }
 
 type importDoneMsg struct {
-	frames []*Frame
+	frames []*converter.Frame
 	err    error
 }
 
@@ -98,8 +128,9 @@ func (p ImportProgressScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "enter", " ":
 				if p.err == nil && len(p.result) > 0 {
-					// Success - open editor
-					return newModelWithConfigAndFrames(p.result, "imported.aart", p.config), nil
+					// Success - convert to UI frames and open editor
+					uiFrames := convertConverterToUIFrames(p.result)
+					return newModelWithConfig(uiFrames, "imported.aart", p.config), nil
 				}
 				// Error - return to previous
 				if p.returnTo != nil {

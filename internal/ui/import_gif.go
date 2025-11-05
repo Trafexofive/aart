@@ -2,6 +2,8 @@ package ui
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -389,9 +391,26 @@ func (g ImportGIFScreen) View() string {
 
 // GetTerminalSize returns the current terminal dimensions
 func GetTerminalSize() (width, height int) {
-	// Try to get from environment or use reasonable defaults
-	// This is a placeholder - will be replaced with actual terminal query
-	return 120, 40
+	// Default fallback
+	width, height = 120, 40
+	
+	// Try stty size command
+	cmd := exec.Command("stty", "size")
+	cmd.Stdin = os.Stdin
+	out, err := cmd.Output()
+	if err == nil {
+		fmt.Sscanf(string(out), "%d %d", &height, &width)
+	}
+	
+	// Ensure reasonable minimums
+	if width < 80 {
+		width = 120
+	}
+	if height < 24 {
+		height = 40
+	}
+	
+	return width, height
 }
 
 // ImportOptions holds GIF import parameters
