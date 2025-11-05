@@ -1,7 +1,9 @@
 package ui
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -124,6 +126,7 @@ type Model struct {
 	
 	// Command mode
 	command    string
+	statusMsg  string
 	
 	// Misc
 	modified   bool
@@ -515,13 +518,175 @@ func (m *Model) executeCommand() {
 		return
 	}
 	
-	switch parts[0] {
+	cmd := parts[0]
+	
+	switch cmd {
+	case "save", "w":
+		// Save to current filename or specify new one
+		filename := m.filename
+		if len(parts) > 1 {
+			filename = parts[1]
+		}
+		if err := m.saveToFile(filename); err != nil {
+			m.statusMsg = fmt.Sprintf("Error saving: %v", err)
+		} else {
+			m.statusMsg = fmt.Sprintf("Saved to %s", filename)
+			m.modified = false
+		}
+	
 	case "export":
-		// TODO: implement export
+		if len(parts) < 2 {
+			m.statusMsg = "Usage: :export <file.ext> [frame]"
+			return
+		}
+		filename := parts[1]
+		frameIdx := -1 // All frames
+		if len(parts) > 2 {
+			fmt.Sscanf(parts[2], "%d", &frameIdx)
+		}
+		if err := m.exportToFile(filename, frameIdx); err != nil {
+			m.statusMsg = fmt.Sprintf("Export error: %v", err)
+		} else {
+			m.statusMsg = fmt.Sprintf("Exported to %s", filename)
+		}
+	
 	case "import":
 		// TODO: implement import
+		m.statusMsg = "Import not yet implemented"
+	
 	case "q", "quit":
-		// TODO: confirm if modified
+		if m.modified {
+			m.statusMsg = "Unsaved changes! Use :q! to force quit or :wq to save and quit"
+		} else {
+			// TODO: trigger quit
+			m.statusMsg = "Quit"
+		}
+	
+	case "q!":
+		// Force quit
+		// TODO: trigger quit
+		m.statusMsg = "Force quit"
+	
+	case "wq":
+		// Save and quit
+		if err := m.saveToFile(m.filename); err != nil {
+			m.statusMsg = fmt.Sprintf("Error saving: %v", err)
+		} else {
+			// TODO: trigger quit
+			m.statusMsg = "Saved and quit"
+		}
+	
+	case "new":
+		// Create new animation
+		m.statusMsg = "New animation created"
+		// TODO: reset to blank canvas
+	
+	case "help":
+		m.statusMsg = "Commands: :save :export :import :new :quit :help"
+	
+	default:
+		m.statusMsg = fmt.Sprintf("Unknown command: %s", cmd)
+	}
+}
+
+// saveToFile saves the current animation to a .aart file
+func (m *Model) saveToFile(filename string) error {
+	// Import the fileformat package at the top if not already
+	aartFile := convertModelToAart(m, filename)
+	
+	// Use the fileformat package to save
+	// For now, we'll implement a simple JSON save
+	// TODO: Use fileformat.Save() once imported
+	data, err := json.Marshal(aartFile)
+	if err != nil {
+		return fmt.Errorf("failed to marshal: %w", err)
+	}
+	
+	if err := os.WriteFile(filename, data, 0644); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+	
+	m.filename = filename
+	return nil
+}
+
+// exportToFile exports to various formats
+func (m *Model) exportToFile(filename string, frameIdx int) error {
+	aartFile := convertModelToAart(m, filename)
+	
+	// Determine format from extension
+	ext := ""
+	if idx := strings.LastIndex(filename, "."); idx >= 0 {
+		ext = filename[idx+1:]
+	}
+	
+	// Simple export based on extension
+	switch ext {
+	case "json":
+		data, err := json.MarshalIndent(aartFile, "", "  ")
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(filename, data, 0644)
+	
+	case "txt", "ans":
+		// Export as plain text
+		frame := m.frames[0]
+		if frameIdx >= 0 && frameIdx < len(m.frames) {
+			frame = m.frames[frameIdx]
+		}
+		
+		var output strings.Builder
+		for y := 0; y < frame.Height; y++ {
+			for x := 0; x < frame.Width; x++ {
+				output.WriteRune(frame.Cells[y][x].Char)
+			}
+			output.WriteRune('\n')
+		}
+		
+		return os.WriteFile(filename, []byte(output.String()), 0644)
+	
+	default:
+		return fmt.Errorf("unsupported export format: %s", ext)
+	}
+}
+
+// convertModelToAart converts the model to AartFile structure
+func convertModelToAart(m *Model, filename string) map[string]interface{} {
+	// Create a simplified version for now
+	// TODO: Use actual fileformat.AartFile once imported
+	frames := make([]map[string]interface{}, len(m.frames))
+	for i, frame := range m.frames {
+		cells := make([][]map[string]string, frame.Height)
+		for y := 0; y < frame.Height; y++ {
+			cells[y] = make([]map[string]string, frame.Width)
+			for x := 0; x < frame.Width; x++ {
+				cells[y][x] = map[string]string{
+					"char": string(frame.Cells[y][x].Char),
+					"fg":   frame.Cells[y][x].FG,
+					"bg":   frame.Cells[y][x].BG,
+				}
+			}
+		}
+		frames[i] = map[string]interface{}{
+			"index": i,
+			"duration": frame.Delay,
+			"cells": cells,
+		}
+	}
+	
+	return map[string]interface{}{
+		"version": "1.0",
+		"metadata": map[string]interface{}{
+			"title": filename,
+			"created": time.Now().Format(time.RFC3339),
+			"modified": time.Now().Format(time.RFC3339),
+		},
+		"canvas": map[string]int{
+			"width":  m.frames[0].Width,
+			"height": m.frames[0].Height,
+		},
+		"frames": frames,
 	}
 }
 
