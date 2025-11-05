@@ -108,32 +108,18 @@ func (m Model) renderStatusBar() string {
 func (m Model) renderTimeline() string {
 	var b strings.Builder
 	
-	// Top border with title - more zen, breathing
-	titleStyle := lipgloss.NewStyle().
-		Foreground(m.theme.AccentPrimary).
-		Bold(true)
-	
-	// Breathing effect on title
+	// Breathing effect
 	alpha := m.breathing.CurrentAlpha()
-	spacer := " "
-	if alpha > 0.9 {
-		spacer = " ✦ "
-	}
-	title := titleStyle.Render(spacer + "TIMELINE" + spacer)
 	
 	borderStyle := lipgloss.NewStyle().
 		Foreground(m.theme.Border)
 	
 	lineWidth := 110
-	titleLen := lipgloss.Width(title)
-	leftPad := (lineWidth - titleLen) / 2
-	rightPad := lineWidth - titleLen - leftPad
 	
-	b.WriteString(borderStyle.Render("├" + strings.Repeat("─", leftPad)))
-	b.WriteString(title)
-	b.WriteString(borderStyle.Render(strings.Repeat("─", rightPad) + "┤\n│ "))
+	// Simplified top border - no title, just clean line
+	b.WriteString(borderStyle.Render("├" + strings.Repeat("─", lineWidth) + "┤\n│ "))
 	
-	// Frame indicators with beautiful box drawing
+	// Frame indicators - sleek minimal
 	maxFrames := 30
 	displayFrames := len(m.frames)
 	if displayFrames > maxFrames {
@@ -145,165 +131,129 @@ func (m Model) renderTimeline() string {
 		frameText := fmt.Sprintf("%2d", i+1)
 		
 		if i == m.currentFrame {
-			// Current frame - bold block
+			// Current frame - sleek indicator
 			frameStyle = lipgloss.NewStyle().
-				Background(m.theme.PlayheadColor).
-				Foreground(m.theme.BgPrimary).
+				Foreground(m.theme.AccentPrimary).
 				Bold(true)
-			frameText = "▓▓"
+			frameText = "●"
+			// Add breathing pulse
+			if alpha > 0.9 {
+				frameText = "◉"
+			}
 		} else if i < m.currentFrame {
-			// Past frames - subtle
+			// Past frames - done
 			frameStyle = lipgloss.NewStyle().
 				Foreground(m.theme.TimelineInactive)
+			frameText = "·"
 		} else {
-			// Future frames - normal brightness
+			// Future frames - todo
 			frameStyle = lipgloss.NewStyle().
-				Foreground(m.theme.TimelineActive)
+				Foreground(m.theme.FgMuted)
+			frameText = "·"
 		}
 		
 		b.WriteString(frameStyle.Render(frameText))
-		b.WriteString(" ")
+		if i < displayFrames-1 {
+			b.WriteString(" ")
+		}
 	}
 	
 	if len(m.frames) > maxFrames {
 		moreStyle := lipgloss.NewStyle().
 			Foreground(m.theme.FgMuted)
-		b.WriteString(moreStyle.Render(fmt.Sprintf("…+%d", len(m.frames)-maxFrames)))
+		b.WriteString(moreStyle.Render(fmt.Sprintf(" …+%d", len(m.frames)-maxFrames)))
 	}
 	
+	// Frame count indicator
+	countStyle := lipgloss.NewStyle().
+		Foreground(m.theme.FgSecondary).
+		MarginLeft(2)
+	b.WriteString(countStyle.Render(fmt.Sprintf("  %d/%d", m.currentFrame+1, len(m.frames))))
+	
 	// Pad to full width
-	currentWidth := displayFrames*3 + 5
-	if len(m.frames) > maxFrames {
-		currentWidth += 5
-	}
+	currentLine := b.String()
+	lines := strings.Split(currentLine, "\n")
+	lastLine := lines[len(lines)-1]
+	// Remove border prefix for width calculation
+	contentAfterBorder := strings.TrimPrefix(lastLine, "│ ")
+	currentWidth := lipgloss.Width(contentAfterBorder)
 	b.WriteString(strings.Repeat(" ", max(0, lineWidth-currentWidth)))
 	
 	b.WriteString(borderStyle.Render("\n│ "))
 	
-	// Playback status line - zen layout
+	// Playback status - zen and minimal
 	divStyle := lipgloss.NewStyle().
 		Foreground(m.theme.Border)
-	div := divStyle.Render(" │ ")
+	div := divStyle.Render("  ")
 	
-	// Status icon with animation
-	statusIcon := "⏹"
-	statusText := "stopped"
+	// Status with icon
+	statusIcon := "■"
 	statusStyle := lipgloss.NewStyle().
 		Foreground(m.theme.FgMuted)
 	
 	if m.playing {
-		statusIcon = "▶"
-		statusText = "playing"
+		statusIcon = "▸"
 		statusStyle = lipgloss.NewStyle().
-			Foreground(m.theme.AccentSuccess).
-			Bold(true)
+			Foreground(m.theme.AccentSuccess)
 		
-		// Add subtle breathing pulse when playing
+		// Subtle breathing pulse when playing
 		if alpha > 0.95 {
-			statusIcon = "▷"
+			statusIcon = "▹"
 		}
 	}
 	
-	b.WriteString(statusStyle.Render(fmt.Sprintf("%s %s", statusIcon, statusText)))
+	b.WriteString(statusStyle.Render(statusIcon))
 	b.WriteString(div)
 	
-	// Frame timing info
+	// Frame timing
 	if len(m.frames) > m.currentFrame {
 		duration := 1000 / m.fps
 		timingStyle := lipgloss.NewStyle().
 			Foreground(m.theme.FgSecondary)
-		b.WriteString(timingStyle.Render(fmt.Sprintf("%dms/frame", duration)))
+		b.WriteString(timingStyle.Render(fmt.Sprintf("%dms", duration)))
 	}
 	
 	b.WriteString(div)
 	
-	// Loop indicator with toggle hint
+	// FPS
+	fpsStyle := lipgloss.NewStyle().
+		Foreground(m.theme.FgSecondary)
+	b.WriteString(fpsStyle.Render(fmt.Sprintf("%dfps", m.fps)))
+	
+	b.WriteString(div)
+	
+	// Loop state
 	loopStyle := lipgloss.NewStyle().
 		Foreground(m.theme.AccentInfo)
-	b.WriteString(loopStyle.Render("loop: "))
-	loopState := lipgloss.NewStyle().
-		Foreground(m.theme.AccentSuccess).
-		Bold(true).
-		Render("on")
-	b.WriteString(loopState)
-	
-	b.WriteString(div)
-	
-	// Shortcuts - zen grouping
-	hintStyle := lipgloss.NewStyle().
-		Foreground(m.theme.FgMuted)
-	keyStyle := lipgloss.NewStyle().
-		Foreground(m.theme.AccentSecondary)
-	
-	b.WriteString(hintStyle.Render("wheel: "))
-	b.WriteString(keyStyle.Render("^j/k"))
-	
-	b.WriteString(div)
-	
-	// Playback control
-	playHint := "[space]"
-	playAction := "play"
-	if m.playing {
-		playAction = "pause"
-	}
-	b.WriteString(keyStyle.Render(playHint))
-	b.WriteString(hintStyle.Render(" " + playAction))
-	
-	// Frame navigation
-	b.WriteString(div)
-	b.WriteString(keyStyle.Render(",/."))
-	b.WriteString(hintStyle.Render(" frame"))
-	
-	// Breathing indicator when playing
-	if m.playing && alpha > 0.95 {
-		breatheStyle := lipgloss.NewStyle().
-			Foreground(m.theme.AccentSuccess)
-		b.WriteString(breatheStyle.Render(" ◉"))
-	}
+	b.WriteString(loopStyle.Render("↻"))
 	
 	b.WriteString(strings.Repeat(" ", max(0, lineWidth-lipgloss.Width(b.String())+2)))
 	
 	b.WriteString(borderStyle.Render("\n│ "))
 	
-	// Command hints - cleaner layout
-	commandStyle := lipgloss.NewStyle().
-		Foreground(m.theme.AccentWarning).
-		Bold(false)
-	b.WriteString(commandStyle.Render(":"))
+	// Commands and shortcuts - clean minimal layout
+	hintStyle := lipgloss.NewStyle().
+		Foreground(m.theme.FgMuted)
+	keyStyle := lipgloss.NewStyle().
+		Foreground(m.theme.AccentSecondary)
 	
-	hintCommands := []string{
-		"export", "import", "new", "save", "quit",
+	// Playback shortcuts
+	var shortcuts []string
+	if m.playing {
+		shortcuts = append(shortcuts, keyStyle.Render("space")+hintStyle.Render(":pause"))
+	} else {
+		shortcuts = append(shortcuts, keyStyle.Render("space")+hintStyle.Render(":play"))
 	}
+	shortcuts = append(shortcuts, keyStyle.Render(",")+hintStyle.Render("/")+keyStyle.Render(".")+hintStyle.Render(":frame"))
+	shortcuts = append(shortcuts, keyStyle.Render("^j/k")+hintStyle.Render(":scroll"))
 	
-	for i, cmd := range hintCommands {
-		if i > 0 {
-			b.WriteString(hintStyle.Render(" "))
-		}
-		b.WriteString(hintStyle.Render(cmd))
-	}
+	// Mode shortcuts
+	shortcuts = append(shortcuts, keyStyle.Render("i")+hintStyle.Render(":insert"))
+	shortcuts = append(shortcuts, keyStyle.Render(":")+hintStyle.Render("cmd"))
+	shortcuts = append(shortcuts, keyStyle.Render("?")+hintStyle.Render(":help"))
+	shortcuts = append(shortcuts, keyStyle.Render("q")+hintStyle.Render(":quit"))
 	
-	b.WriteString(divStyle.Render(" │ "))
-	
-	// Navigation hints
-	navHints := []struct {
-		key    string
-		action string
-	}{
-		{"hjkl", "move"},
-		{"+/-", "zoom"},
-		{"g", "grid"},
-		{"z", "zen"},
-		{"?", "help"},
-		{"q", "quit"},
-	}
-	
-	for i, hint := range navHints {
-		if i > 0 {
-			b.WriteString(hintStyle.Render(" "))
-		}
-		b.WriteString(keyStyle.Render(hint.key))
-		b.WriteString(hintStyle.Render(":" + hint.action))
-	}
+	b.WriteString(strings.Join(shortcuts, hintStyle.Render("  ")))
 	
 	return m.styles.Timeline.Render(b.String())
 }
