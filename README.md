@@ -118,3 +118,52 @@ See `notes/designs/design_reference.md` for the complete UI design specification
 ## License
 
 MIT
+
+## GIF Import Feature
+
+Import animated GIFs and convert them to ASCII art animations!
+
+### Usage
+
+```bash
+# Import from local file
+aart --import-gif animation.gif
+
+# Import from URL
+aart --import-gif https://example.com/animation.gif
+
+# Customize conversion
+aart --import-gif animation.gif --width 120 --height 40 --method block
+
+# Save to file instead of opening editor
+aart --import-gif animation.gif --output converted.aart
+```
+
+### Conversion Methods
+
+- **luminosity** (default): Converts based on pixel brightness using extended character set
+- **block**: Uses block characters (░▒▓█) for a solid, blocky look
+- **edge**: Edge detection with line characters for wireframe effect
+- **dither**: Dithered output for smoother gradients
+
+### Options
+
+- `--width <int>`: Canvas width (default: 80)
+- `--height <int>`: Canvas height (default: 24)
+- `--fps <int>`: Target FPS (default: 12)
+- `--method <string>`: Conversion method
+- `--chars <string>`: Custom character set for conversion
+- `--output <file>`: Save to file instead of opening editor
+
+### Examples
+
+```bash
+# Small, blocky animation
+aart --import-gif dance.gif --width 40 --height 20 --method block
+
+# Large, detailed conversion
+aart --import-gif movie.gif --width 160 --height 60 --method luminosity
+
+# Custom character ramp
+aart --import-gif art.gif --chars " .:-=+*#%@"
+```

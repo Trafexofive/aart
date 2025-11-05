@@ -25,3 +25,6 @@ Thumbs.db
 
 # Temporary files
 *.tmp
+
+# Test output files
+test_*.aart

@@ -173,6 +173,58 @@ func New() Model {
 		frames[i] = NewFrame(width, height)
 	}
 	
+	return newModel(frames, "untitled.aart")
+}
+
+// NewWithFrames creates a model with imported frames
+func NewWithFrames(importedFrames []ImportedFrame) Model {
+	if len(importedFrames) == 0 {
+		return New()
+	}
+	
+	// Convert imported frames to internal format
+	frames := make([]*Frame, len(importedFrames))
+	for i, imported := range importedFrames {
+		frame := &Frame{
+			Width:    imported.Width,
+			Height:   imported.Height,
+			Cells:    make([][]Cell, imported.Height),
+			Modified: false,
+		}
+		
+		for y := 0; y < imported.Height; y++ {
+			frame.Cells[y] = make([]Cell, imported.Width)
+			for x := 0; x < imported.Width; x++ {
+				frame.Cells[y][x] = Cell{
+					Char: imported.Cells[y][x].Char,
+					FG:   imported.Cells[y][x].FG,
+					BG:   imported.Cells[y][x].BG,
+				}
+			}
+		}
+		
+		frames[i] = frame
+	}
+	
+	return newModel(frames, "imported.aart")
+}
+
+// ImportedFrame represents a frame from the converter
+type ImportedFrame struct {
+	Width  int
+	Height int
+	Cells  [][]ImportedCell
+	Delay  int
+}
+
+// ImportedCell represents a cell from the converter
+type ImportedCell struct {
+	Char rune
+	FG   string
+	BG   string
+}
+
+func newModel(frames []*Frame, filename string) Model {
 	return Model{
 		mode:         ModeNormal,
 		cursor:       Pos{X: 40, Y: 12},
@@ -187,7 +239,7 @@ func New() Model {
 		brushSize:    1,
 		zoom:         1.0,
 		showGrid:     false,
-		filename:     "untitled.aart",
+		filename:     filename,
 		layers: []Layer{
 			{Name: "background", Visible: true, Opacity: 1.0, BlendMode: "normal"},
 			{Name: "fg_chars", Visible: true, Opacity: 1.0, BlendMode: "normal"},
