@@ -180,6 +180,12 @@ func (s StartupPage) handleAction() (tea.Model, tea.Cmd) {
 	case "new":
 		// Create new animation - transition to editor
 		return NewWithConfig(s.config), nil
+	case "open":
+		// Open file picker
+		return NewFilePicker(s.config, "📂 Open File", ".aart", s), nil
+	case "import":
+		// Show GIF import dialog
+		return NewImportGIFScreen(s.config, s), nil
 	case "quit":
 		return s, tea.Quit
 	case "theme":
@@ -201,6 +207,12 @@ func (s StartupPage) handleAction() (tea.Model, tea.Cmd) {
 	case "help":
 		// Show help screen
 		return NewHelpScreen(s.config), nil
+	case "settings":
+		// Show settings screen
+		return NewSettingsScreen(s.config, s), nil
+	case "examples":
+		// Show examples gallery
+		return NewExamplesScreen(s.config, s), nil
 	default:
 		// Other actions not implemented yet
 		return s, nil
