@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"encoding/json"
 	"fmt"
 	"image"
 	"image/gif"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/nfnt/resize"
 )
@@ -297,36 +299,90 @@ func getCustomChar(lum uint8, chars string) rune {
 	return runes[idx]
 }
 
-// SaveFrames saves frames to a file
+// SaveFrames saves frames to .aart format
 func SaveFrames(frames []*Frame, filename string) error {
-	// TODO: Implement file format
-	// For now, save as JSON or custom format
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
+	if len(frames) == 0 {
+		return fmt.Errorf("no frames to save")
 	}
-	defer f.Close()
 
-	// Write metadata
-	fmt.Fprintf(f, "aart v0.1.0\n")
-	fmt.Fprintf(f, "frames: %d\n", len(frames))
-	if len(frames) > 0 {
-		fmt.Fprintf(f, "dimensions: %dx%d\n", frames[0].Width, frames[0].Height)
-	}
-	fmt.Fprintf(f, "---\n")
+	// Create .aart file structure
+	aartFile := &struct {
+		Version  string `json:"version"`
+		Metadata struct {
+			Title    string `json:"title"`
+			Created  string `json:"created"`
+			Modified string `json:"modified"`
+			Source   string `json:"source"`
+		} `json:"metadata"`
+		Canvas struct {
+			Width  int `json:"width"`
+			Height int `json:"height"`
+		} `json:"canvas"`
+		Frames []struct {
+			Index    int `json:"index"`
+			Duration int `json:"duration"`
+			Cells    [][]struct {
+				Char       string `json:"char"`
+				Foreground string `json:"fg"`
+				Background string `json:"bg"`
+			} `json:"cells"`
+		} `json:"frames"`
+	}{}
 
-	// Write frames
+	aartFile.Version = "1.0"
+	aartFile.Metadata.Title = filename
+	aartFile.Metadata.Created = time.Now().Format(time.RFC3339)
+	aartFile.Metadata.Modified = time.Now().Format(time.RFC3339)
+	aartFile.Metadata.Source = "converted"
+	
+	aartFile.Canvas.Width = frames[0].Width
+	aartFile.Canvas.Height = frames[0].Height
+	
+	// Convert frames
+	aartFile.Frames = make([]struct {
+		Index    int `json:"index"`
+		Duration int `json:"duration"`
+		Cells    [][]struct {
+			Char       string `json:"char"`
+			Foreground string `json:"fg"`
+			Background string `json:"bg"`
+		} `json:"cells"`
+	}, len(frames))
+
 	for i, frame := range frames {
-		fmt.Fprintf(f, "frame: %d\n", i)
-		fmt.Fprintf(f, "delay: %d\n", frame.Delay)
+		aartFile.Frames[i].Index = i
+		aartFile.Frames[i].Duration = frame.Delay
+		aartFile.Frames[i].Cells = make([][]struct {
+			Char       string `json:"char"`
+			Foreground string `json:"fg"`
+			Background string `json:"bg"`
+		}, frame.Height)
+
 		for y := 0; y < frame.Height; y++ {
+			aartFile.Frames[i].Cells[y] = make([]struct {
+				Char       string `json:"char"`
+				Foreground string `json:"fg"`
+				Background string `json:"bg"`
+			}, frame.Width)
+			
 			for x := 0; x < frame.Width; x++ {
 				cell := frame.Cells[y][x]
-				fmt.Fprintf(f, "%c", cell.Char)
+				aartFile.Frames[i].Cells[y][x].Char = string(cell.Char)
+				aartFile.Frames[i].Cells[y][x].Foreground = cell.FG
+				aartFile.Frames[i].Cells[y][x].Background = cell.BG
 			}
-			fmt.Fprintf(f, "\n")
 		}
-		fmt.Fprintf(f, "---\n")
+	}
+
+	// Marshal to JSON
+	data, err := json.MarshalIndent(aartFile, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal frames: %w", err)
+	}
+
+	// Write to file
+	if err := os.WriteFile(filename, data, 0644); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
 	}
 
 	fmt.Printf("Saved to: %s\n", filename)

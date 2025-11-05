@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mlamkadm/aart/internal/config"
 	"github.com/mlamkadm/aart/internal/converter"
+	"github.com/mlamkadm/aart/internal/fileformat"
 	"github.com/mlamkadm/aart/internal/ui"
 )
 
@@ -25,6 +26,12 @@ var (
 	initConfig   = flag.Bool("init", false, "Initialize configuration directory")
 	showConfig   = flag.Bool("show-config", false, "Show current configuration")
 	configPath   = flag.Bool("config-path", false, "Show configuration file path")
+	
+	// Export options
+	exportFile   = flag.String("export", "", "Export file to format (specify output path)")
+	exportFormat = flag.String("export-format", "json", "Export format: json, csv, ansi, txt, html, svg")
+	exportFrame  = flag.Int("export-frame", -1, "Export specific frame (-1 for all)")
+	exportColors = flag.Bool("export-colors", true, "Include colors in export")
 )
 
 const versionString = "aart v0.1.0"
@@ -80,6 +87,21 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: Failed to load config, using defaults: %v\n", err)
 		cfg = &config.DefaultConfig
+	}
+
+	// Handle export
+	if *exportFile != "" {
+		args := flag.Args()
+		if len(args) == 0 {
+			fmt.Fprintf(os.Stderr, "Error: specify input .aart file for export\n")
+			fmt.Fprintf(os.Stderr, "Usage: aart <file.aart> --export output.json --export-format json\n")
+			os.Exit(1)
+		}
+		if err := handleExport(args[0]); err != nil {
+			fmt.Fprintf(os.Stderr, "Error exporting: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 
 	// Handle GIF import
@@ -263,6 +285,45 @@ func printConfig(cfg *config.Config) {
 	
 	path, _ := config.ConfigPath()
 	fmt.Printf("\nConfig File: %s\n", path)
+}
+
+func handleExport(inputFile string) error {
+	fmt.Printf("📦 Exporting: %s\n", inputFile)
+	fmt.Printf("Format: %s\n", *exportFormat)
+	fmt.Printf("Output: %s\n\n", *exportFile)
+
+	// Load .aart file
+	aart, err := fileformat.Load(inputFile)
+	if err != nil {
+		return fmt.Errorf("failed to load .aart file: %w", err)
+	}
+
+	// Validate
+	if err := aart.Validate(); err != nil {
+		return fmt.Errorf("invalid .aart file: %w", err)
+	}
+
+	// Prepare export options
+	opts := fileformat.ExportOptions{
+		Format:      fileformat.ExportFormat(*exportFormat),
+		FrameIndex:  *exportFrame,
+		IncludeMeta: true,
+		Colors:      *exportColors,
+	}
+
+	// Export
+	if err := fileformat.Export(aart, *exportFile, opts); err != nil {
+		return err
+	}
+
+	fmt.Printf("✓ Exported successfully!\n")
+	fmt.Printf("  Frames: %d\n", aart.FrameCount())
+	fmt.Printf("  Size: %dx%d\n", aart.Canvas.Width, aart.Canvas.Height)
+	if *exportFrame >= 0 {
+		fmt.Printf("  Frame: %d only\n", *exportFrame)
+	}
+
+	return nil
 }
 
 func printHelp() {
