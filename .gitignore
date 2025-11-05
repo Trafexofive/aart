@@ -1,0 +1,27 @@
+# Binary (in root only)
+/aart
+
+# Build artifacts
+*.o
+*.a
+*.so
+
+# Test binaries
+*.test
+
+# Coverage
+*.out
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
