@@ -122,7 +122,8 @@ func main() {
 		// TODO: Load file
 		model = ui.NewWithConfig(cfg)
 	} else {
-		model = ui.NewWithConfig(cfg)
+		// Show startup page
+		model = ui.NewStartupPage(cfg)
 	}
 
 	p := tea.NewProgram(
