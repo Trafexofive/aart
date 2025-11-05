@@ -41,11 +41,12 @@ type Cell struct {
 // ImportGIF is a convenience wrapper for UI that returns frames directly
 func ImportGIF(source string, width, height, fps int, method, ratio string) ([]*Frame, error) {
 	return ConvertGifToFrames(source, Options{
-		Width:  width,
-		Height: height,
-		FPS:    fps,
-		Method: method,
-		Ratio:  ratio,
+		Width:     width,
+		Height:    height,
+		FPS:       fps,
+		Method:    method,
+		Ratio:     ratio,
+		UseColors: false, // Default to monochrome for better quality
 	})
 }
 
