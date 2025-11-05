@@ -26,13 +26,18 @@ A terminal-based ASCII art animation editor with GIF import capabilities built w
 - **URL Support**: Direct import from web URLs
 - **Local File Import**: Load GIFs from filesystem
 - **Multiple Conversion Methods**:
-  - **luminosity**: Brightness-based conversion (default)
+  - **luminosity**: Brightness-based conversion (default, best quality)
   - **block**: Block character style (░▒▓█)
   - **edge**: Edge detection wireframe
   - **dither**: Dithered gradients
 - **Smart Sizing**: Auto-detect terminal dimensions or specify custom size
 - **FPS Control**: Match original or set custom frame rate
-- **Aspect Ratio Modes**: Fill, original, or custom ratios
+- **Aspect Ratio Modes**: 
+  - **fill**: Stretch to fill target dimensions
+  - **fit**: Scale to fit while preserving aspect ratio
+  - **original**: Keep original size (scale down if too large)
+  - Accounts for character aspect ratio (2:1) automatically
+- **Quality Improvements**: Grayscale quantization for consistent frame-to-frame colors
 
 ### Configuration System ✅
 - **Config File**: `~/.config/aart/config.yml` for persistent settings
@@ -76,11 +81,31 @@ make build
 ./aart --import-gif https://media.giphy.com/media/example.gif
 
 # Import with custom settings
-./aart --import-gif animation.gif --fps 60 --width 200 --height 60 --method dither
+./aart --import-gif animation.gif --fps 60 --width 200 --height 60 --method luminosity
 
-# Auto-size to terminal
+# Auto-size to terminal with aspect ratio preservation
+./aart --import-gif animation.gif --ratio fit
+
+# Fill terminal completely (may stretch)
 ./aart --import-gif animation.gif --ratio fill
+
+# Keep original dimensions (scale down if too large)
+./aart --import-gif animation.gif --ratio original
 ```
+
+### Recent Improvements (v0.1.1)
+
+**GIF Conversion Quality:**
+- ✅ Proper aspect ratio handling with `--ratio fill|fit|original`
+- ✅ Character aspect ratio (2:1) automatically accounted for
+- ✅ CLI flags now properly override config defaults
+- ✅ Config defaults only apply when flags aren't explicitly set
+
+**Configuration:**
+- ✅ Custom startup artwork with border and offset options
+- ✅ Theme system with multiple built-in themes
+- ✅ Edit config directly from startup page with `$EDITOR`
+- ✅ Recent files tracking and navigation
 
 ## Keyboard Shortcuts
 
