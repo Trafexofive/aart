@@ -113,6 +113,7 @@ type Model struct {
 	// UI state
 	showGrid   bool
 	zoom       float64
+	zenMode    bool  // Minimal UI mode
 	
 	// Command mode
 	command    string
@@ -397,6 +398,8 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.zoom = maxFloat(m.zoom-0.25, 0.25)
 	case "0":
 		m.zoom = 1.0
+	case "z":
+		m.zenMode = !m.zenMode
 		
 	// Command mode
 	case ":":
@@ -478,6 +481,11 @@ func (m Model) View() string {
 	
 	var b strings.Builder
 	
+	// Zen mode - only canvas
+	if m.zenMode {
+		return m.renderCanvasOnly()
+	}
+	
 	// Status bar
 	b.WriteString(m.renderStatusBar())
 	b.WriteString("\n")
@@ -497,6 +505,56 @@ func (m Model) View() string {
 	b.WriteString(m.renderBottomStatus())
 	
 	return b.String()
+}
+
+func (m Model) renderCanvasOnly() string {
+	frame := m.frames[m.currentFrame]
+	var b strings.Builder
+	
+	// Just the canvas content, no borders
+	for y := 0; y < min(frame.Height, m.height); y++ {
+		for x := 0; x < min(frame.Width, m.width); x++ {
+			cell := frame.Cells[y][x]
+			
+			// Show cursor in zen mode too
+			if x == m.cursor.X && y == m.cursor.Y && m.mode != ModeCommand {
+				b.WriteString(lipgloss.NewStyle().
+					Foreground(lipgloss.Color("11")).
+					Render("┃"))
+			} else {
+				b.WriteString(string(cell.Char))
+			}
+		}
+		b.WriteString("\n")
+	}
+	
+	// Minimal status at bottom in zen mode
+	if m.mode == ModeCommand {
+		b.WriteString(lipgloss.NewStyle().
+			Foreground(lipgloss.Color("8")).
+			Render(fmt.Sprintf(":%s▌", m.command)))
+	} else if m.mode == ModeInsert {
+		b.WriteString(lipgloss.NewStyle().
+			Foreground(lipgloss.Color("8")).
+			Render("-- INSERT --"))
+	} else {
+		playIcon := "⏸"
+		if m.playing {
+			playIcon = "▶"
+		}
+		b.WriteString(lipgloss.NewStyle().
+			Foreground(lipgloss.Color("8")).
+			Render(fmt.Sprintf("%s %d/%d | z:exit zen", playIcon, m.currentFrame+1, len(m.frames))))
+	}
+	
+	return b.String()
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func (m Model) renderStatusBar() string {

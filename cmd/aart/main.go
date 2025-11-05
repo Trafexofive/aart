@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mlamkadm/aart/internal/converter"
@@ -71,27 +72,50 @@ func main() {
 }
 
 func handleGifImport() error {
-	fmt.Printf("Importing GIF: %s\n", *importGif)
-	fmt.Printf("Target size: %dx%d\n", *width, *height)
-	fmt.Printf("Target FPS: %d\n", *fps)
-	fmt.Printf("Method: %s\n", *method)
+	fmt.Printf("🎨 aart - GIF to ASCII Converter\n\n")
+	fmt.Printf("Source: %s\n", *importGif)
+	fmt.Printf("Target: %dx%d @ %dfps\n", *width, *height, *fps)
+	fmt.Printf("Method: %s\n\n", *method)
+
+	// Progress tracking
+	lastPercent := 0
+	progressCallback := func(current, total int, message string) {
+		percent := current
+		if percent != lastPercent {
+			// Simple progress bar
+			barWidth := 40
+			filled := percent * barWidth / 100
+			bar := strings.Repeat("█", filled) + strings.Repeat("░", barWidth-filled)
+			fmt.Printf("\r%s %3d%% %s", bar, percent, message)
+			if percent >= 100 {
+				fmt.Println()
+			}
+			lastPercent = percent
+		}
+	}
 
 	frames, err := converter.ConvertGifToFrames(*importGif, converter.Options{
-		Width:  *width,
-		Height: *height,
-		FPS:    *fps,
-		Method: *method,
-		Chars:  *chars,
+		Width:            *width,
+		Height:           *height,
+		FPS:              *fps,
+		Method:           *method,
+		Chars:            *chars,
+		ProgressCallback: progressCallback,
 	})
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Converted %d frames\n", len(frames))
+	fmt.Printf("\n✓ Converted %d frames successfully!\n\n", len(frames))
 
 	// If output file specified, save it
 	if *outputFile != "" {
-		return converter.SaveFrames(frames, *outputFile)
+		fmt.Printf("💾 Saving to %s...\n", *outputFile)
+		if err := converter.SaveFrames(frames, *outputFile); err != nil {
+			return err
+		}
+		fmt.Printf("✓ Saved!\n")
+		return nil
 	}
 
 	// Convert to UI format
@@ -117,7 +141,7 @@ func handleGifImport() error {
 	}
 
 	// Otherwise, open in editor
-	fmt.Println("\nOpening in editor...")
+	fmt.Println("🖼️  Opening in editor...\n")
 	p := tea.NewProgram(
 		ui.NewWithFrames(uiFrames),
 		tea.WithAltScreen(),

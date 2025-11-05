@@ -13,11 +13,12 @@ import (
 )
 
 type Options struct {
-	Width  int
-	Height int
-	FPS    int
-	Method string
-	Chars  string
+	Width            int
+	Height           int
+	FPS              int
+	Method           string
+	Chars            string
+	ProgressCallback func(current, total int, message string)
 }
 
 type Frame struct {
@@ -35,10 +36,19 @@ type Cell struct {
 
 // ConvertGifToFrames converts a GIF (from URL or file) to ASCII frames
 func ConvertGifToFrames(source string, opts Options) ([]*Frame, error) {
+	// Report progress
+	if opts.ProgressCallback != nil {
+		opts.ProgressCallback(0, 100, "Loading GIF...")
+	}
+	
 	// Load GIF
 	gifData, err := loadGif(source)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load GIF: %w", err)
+	}
+
+	if opts.ProgressCallback != nil {
+		opts.ProgressCallback(10, 100, fmt.Sprintf("Processing %d frames...", len(gifData.Image)))
 	}
 
 	// Convert each frame with proper composition
@@ -46,6 +56,12 @@ func ConvertGifToFrames(source string, opts Options) ([]*Frame, error) {
 	var previousFrame image.Image
 	
 	for i, img := range gifData.Image {
+		// Report progress every 10 frames or for small GIFs
+		if opts.ProgressCallback != nil && (i%10 == 0 || len(gifData.Image) < 50) {
+			percent := 10 + (i * 80 / len(gifData.Image))
+			opts.ProgressCallback(percent, 100, fmt.Sprintf("Converting frame %d/%d...", i+1, len(gifData.Image)))
+		}
+		
 		// Handle GIF disposal and composition
 		var composited image.Image
 		
@@ -74,6 +90,10 @@ func ConvertGifToFrames(source string, opts Options) ([]*Frame, error) {
 		frame.Delay = delay
 		
 		frames[i] = frame
+	}
+
+	if opts.ProgressCallback != nil {
+		opts.ProgressCallback(100, 100, "Complete!")
 	}
 
 	return frames, nil
