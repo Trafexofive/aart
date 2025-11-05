@@ -607,30 +607,6 @@ func min(a, b int) int {
 	return b
 }
 
-func (m Model) renderStatusBar() string {
-	modified := ""
-	if m.modified {
-		modified = " *"
-	}
-	
-	return lipgloss.NewStyle().
-		Foreground(lipgloss.Color("15")).
-		Background(lipgloss.Color("8")).
-		Render(fmt.Sprintf(
-			" aart v0.1.0  │ %s%s │ %dx%d │ frame %d/%d │ %dfps │ %s │ fg:%c bg:  │ layer %d/%d ",
-			m.filename,
-			modified,
-			m.frames[m.currentFrame].Width,
-			m.frames[m.currentFrame].Height,
-			m.currentFrame+1,
-			len(m.frames),
-			m.fps,
-			toolNames[m.selectedTool],
-			m.fgChar,
-			m.currentLayer+1,
-			len(m.layers),
-		))
-}
 
 func (m Model) renderCanvas(height int) string {
 	var b strings.Builder
@@ -825,69 +801,6 @@ func (m Model) renderExpandedWheel(line, totalHeight int) string {
 	return strings.Repeat(" ", 22)
 }
 
-func (m Model) renderTimeline() string {
-	var b strings.Builder
-	
-	border := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	b.WriteString(border.Render("├─ TIMELINE "))
-	b.WriteString(border.Render(strings.Repeat("─", m.width-13) + "┤"))
-	b.WriteString("\n│ ")
-	
-	// Frame boxes
-	for i := 0; i < len(m.frames); i++ {
-		if i == m.currentFrame {
-			b.WriteString(lipgloss.NewStyle().
-				Foreground(lipgloss.Color("11")).
-				Render("▓▓"))
-		} else if m.frames[i].Modified {
-			b.WriteString(lipgloss.NewStyle().
-				Foreground(lipgloss.Color("10")).
-				Render(fmt.Sprintf("%2d", i+1)))
-		} else {
-			b.WriteString(fmt.Sprintf("%2d", i+1))
-		}
-		if i < len(m.frames)-1 {
-			b.WriteString(" ")
-		}
-	}
-	
-	b.WriteString(strings.Repeat(" ", max(0, m.width-3*len(m.frames)-3)))
-	b.WriteString("│\n")
-	
-	playStatus := "stopped"
-	if m.playing {
-		playStatus = "▶ playing"
-	}
-	
-	b.WriteString(border.Render(fmt.Sprintf("│ %s │ %dms/frame │ loop: on │ ctrl-j/k: wheel │ [space] pause", 
-		playStatus, 1000/m.fps)))
-	b.WriteString(strings.Repeat(" ", max(0, m.width-80)))
-	b.WriteString(border.Render("│"))
-	
-	return b.String()
-}
-
-func (m Model) renderBottomStatus() string {
-	border := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	
-	if m.mode == ModeCommand {
-		cmd := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("11")).
-			Render(":" + m.command + "▌")
-		return border.Render("│ ") + cmd + strings.Repeat(" ", max(0, m.width-len(m.command)-5)) + border.Render("│")
-	}
-	
-	if m.mode == ModeInsert {
-		status := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("10")).
-			Render("-- INSERT --")
-		return border.Render("│ ") + status + strings.Repeat(" ", max(0, m.width-16)) + border.Render("│")
-	}
-	
-	statusText := fmt.Sprintf(" :export out.ans | hjkl:move ctrl-j/k:wheel +/-:zoom g:grid ?:help q:quit")
-	padding := max(0, m.width-len(statusText)-2)
-	return border.Render("│") + statusText + strings.Repeat(" ", padding) + border.Render("│")
-}
 
 func minFloat(a, b float64) float64 {
 	if a < b {
