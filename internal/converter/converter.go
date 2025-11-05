@@ -92,8 +92,11 @@ func ConvertGifToFrames(source string, opts Options) ([]*Frame, error) {
 		// Save for next iteration
 		previousFrame = composited
 		
+		// Calculate resize dimensions based on ratio mode
+		targetWidth, targetHeight := calculateDimensions(composited, opts)
+		
 		// Resize image to target dimensions
-		resized := resize.Resize(uint(opts.Width), uint(opts.Height), composited, resize.Lanczos3)
+		resized := resize.Resize(uint(targetWidth), uint(targetHeight), composited, resize.Lanczos3)
 		
 		// Convert to ASCII
 		frame := convertImageToASCII(resized, opts)
@@ -113,6 +116,49 @@ func ConvertGifToFrames(source string, opts Options) ([]*Frame, error) {
 	}
 
 	return frames, nil
+}
+
+// calculateDimensions determines target dimensions based on ratio mode
+func calculateDimensions(img image.Image, opts Options) (width, height int) {
+	bounds := img.Bounds()
+	srcWidth := float64(bounds.Dx())
+	srcHeight := float64(bounds.Dy())
+	targetWidth := float64(opts.Width)
+	targetHeight := float64(opts.Height)
+	
+	// Account for character aspect ratio (characters are ~2x taller than wide)
+	charAspectRatio := 2.0
+	targetHeight *= charAspectRatio
+	
+	switch opts.Ratio {
+	case "original":
+		// Keep original dimensions (scale down if larger than target)
+		if srcWidth <= targetWidth && srcHeight <= targetHeight {
+			return int(srcWidth), int(srcHeight / charAspectRatio)
+		}
+		// Scale down proportionally
+		scale := min(targetWidth/srcWidth, targetHeight/srcHeight)
+		return int(srcWidth * scale), int((srcHeight * scale) / charAspectRatio)
+		
+	case "fit":
+		// Fit inside target dimensions, preserving aspect ratio
+		scale := min(targetWidth/srcWidth, targetHeight/srcHeight)
+		return int(srcWidth * scale), int((srcHeight * scale) / charAspectRatio)
+		
+	case "fill":
+		fallthrough
+	default:
+		// Fill target dimensions (may crop or stretch)
+		return opts.Width, opts.Height
+	}
+}
+
+// min returns the minimum of two float64 values
+func min(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // compositeImages composites src over dst, handling transparency

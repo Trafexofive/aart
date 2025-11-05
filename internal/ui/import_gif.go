@@ -58,6 +58,12 @@ func NewImportGIFScreen(cfg *config.Config, returnTo tea.Model) ImportGIFScreen 
 		defaultHeight = 30
 	}
 	
+	// Use converter default method from config
+	defaultMethod := cfg.Converter.DefaultMethod
+	if defaultMethod == "" {
+		defaultMethod = "luminosity"
+	}
+	
 	return ImportGIFScreen{
 		theme:        theme,
 		styles:       NewStyles(theme),
@@ -66,7 +72,7 @@ func NewImportGIFScreen(cfg *config.Config, returnTo tea.Model) ImportGIFScreen 
 		targetWidth:  defaultWidth,
 		targetHeight: defaultHeight,
 		fps:          cfg.Editor.DefaultFPS,
-		method:       "block",
+		method:       defaultMethod,
 		ratio:        "fill",
 		inputMode:    "url",
 		cursor:       0,
