@@ -41,6 +41,12 @@ const versionString = "aart v0.1.0"
 
 func main() {
 	flag.Parse()
+	
+	// Track which flags were explicitly set by the user
+	flagsSet := make(map[string]bool)
+	flag.Visit(func(f *flag.Flag) {
+		flagsSet[f.Name] = true
+	})
 
 	if *showHelp {
 		printHelp()
@@ -109,7 +115,7 @@ func main() {
 
 	// Handle GIF import
 	if *importGif != "" {
-		if err := handleGifImport(cfg); err != nil {
+		if err := handleGifImport(cfg, flagsSet); err != nil {
 			fmt.Fprintf(os.Stderr, "Error importing GIF: %v\n", err)
 			os.Exit(1)
 		}
@@ -141,7 +147,7 @@ func main() {
 	}
 }
 
-func handleGifImport(cfg *config.Config) error {
+func handleGifImport(cfg *config.Config, flagsSet map[string]bool) error {
 	// Auto-detect terminal size if width/height not specified
 	convertWidth := *width
 	convertHeight := *height
@@ -168,11 +174,11 @@ func handleGifImport(cfg *config.Config) error {
 	convertMethod := *method
 	convertRatio := *ratio
 	
-	// Use config defaults if still at defaults
-	if convertFPS == 12 && cfg.Editor.DefaultFPS != 12 {
+	// Use config defaults ONLY if flags weren't explicitly set
+	if !flagsSet["fps"] && cfg.Editor.DefaultFPS != 0 {
 		convertFPS = cfg.Editor.DefaultFPS
 	}
-	if convertMethod == "luminosity" && cfg.Converter.DefaultMethod != "" {
+	if !flagsSet["method"] && cfg.Converter.DefaultMethod != "" {
 		convertMethod = cfg.Converter.DefaultMethod
 	}
 	
