@@ -1,9 +1,11 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -345,18 +347,9 @@ func (c *Config) GetRecentFiles() []RecentFile {
 func (c *Config) GetStartupArtwork() string {
 	// Try loading from file first
 	if c.Startup.ArtworkFile != "" {
-		// Try absolute path first
-		if data, err := os.ReadFile(c.Startup.ArtworkFile); err == nil {
-			return string(data)
-		}
-		
-		// Try relative to config directory
-		dir, err := ConfigDir()
-		if err == nil {
-			artPath := filepath.Join(dir, c.Startup.ArtworkFile)
-			if data, err := os.ReadFile(artPath); err == nil {
-				return string(data)
-			}
+		artwork := c.loadArtworkFile(c.Startup.ArtworkFile)
+		if artwork != "" {
+			return artwork
 		}
 	}
 	
@@ -367,6 +360,80 @@ func (c *Config) GetStartupArtwork() string {
 	
 	// Return default logo
 	return DefaultStartupArtwork
+}
+
+// loadArtworkFile loads artwork from a file, handling different formats
+func (c *Config) loadArtworkFile(path string) string {
+	// Try absolute path first
+	data, err := os.ReadFile(path)
+	if err != nil {
+		// Try relative to config directory
+		dir, err := ConfigDir()
+		if err == nil {
+			artPath := filepath.Join(dir, path)
+			data, err = os.ReadFile(artPath)
+		}
+		if err != nil {
+			return ""
+		}
+	}
+	
+	// Check if it's a .aa file (JSON format)
+	if strings.HasSuffix(path, ".aa") || strings.HasSuffix(path, ".aart") {
+		return extractArtworkFromAA(data)
+	}
+	
+	// Otherwise treat as plain text
+	return string(data)
+}
+
+// extractArtworkFromAA extracts ASCII art from a .aa file
+func extractArtworkFromAA(data []byte) string {
+	// Parse the .aa file JSON
+	var aart struct {
+		Canvas struct {
+			Width  int `json:"width"`
+			Height int `json:"height"`
+		} `json:"canvas"`
+		Frames []struct {
+			Cells [][]struct {
+				Char string `json:"char"`
+			} `json:"cells"`
+		} `json:"frames"`
+	}
+	
+	if err := json.Unmarshal(data, &aart); err != nil {
+		// If parsing fails, return empty (will fallback to default)
+		return ""
+	}
+	
+	// Get first frame
+	if len(aart.Frames) == 0 || len(aart.Frames[0].Cells) == 0 {
+		return ""
+	}
+	
+	// Build ASCII art from cells
+	var lines []string
+	for _, row := range aart.Frames[0].Cells {
+		var line strings.Builder
+		for _, cell := range row {
+			if cell.Char == "" {
+				line.WriteString(" ")
+			} else {
+				line.WriteString(cell.Char)
+			}
+		}
+		// Trim trailing spaces
+		lineStr := strings.TrimRight(line.String(), " ")
+		lines = append(lines, lineStr)
+	}
+	
+	// Remove trailing empty lines
+	for len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	
+	return strings.Join(lines, "\n")
 }
 
 // DefaultStartupArtwork is the default ASCII art logo (compact version for 80x24 compatibility)
