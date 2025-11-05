@@ -11,13 +11,14 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	Version   string       `yaml:"version"`
-	Editor    EditorConfig `yaml:"editor"`
-	UI        UIConfig     `yaml:"ui"`
-	Colors    ColorScheme  `yaml:"colors"`
-	Recent    RecentFiles  `yaml:"recent"`
-	Converter ConvertConfig `yaml:"converter"`
-	Keybinds  KeyBindings  `yaml:"keybindings,omitempty"`
+	Version   string         `yaml:"version"`
+	Editor    EditorConfig   `yaml:"editor"`
+	UI        UIConfig       `yaml:"ui"`
+	Colors    ColorScheme    `yaml:"colors"`
+	Recent    RecentFiles    `yaml:"recent"`
+	Converter ConvertConfig  `yaml:"converter"`
+	Startup   StartupConfig  `yaml:"startup"`
+	Keybinds  KeyBindings    `yaml:"keybindings,omitempty"`
 }
 
 // EditorConfig contains editor preferences
@@ -35,13 +36,16 @@ type EditorConfig struct {
 
 // UIConfig contains UI preferences
 type UIConfig struct {
-	Theme           string  `yaml:"theme"` // dark, light, custom
-	ShowStatusBar   bool    `yaml:"show_status_bar"`
-	ShowTimeline    bool    `yaml:"show_timeline"`
-	ShowWheelByDefault bool `yaml:"show_wheel_by_default"`
-	CursorStyle     string  `yaml:"cursor_style"` // block, line, underline
-	AnimationSmooth bool    `yaml:"animation_smooth"`
-	ProgressStyle   string  `yaml:"progress_style"` // bar, spinner, minimal
+	Theme              string  `yaml:"theme"` // dark, light, custom
+	ShowStatusBar      bool    `yaml:"show_status_bar"`
+	ShowTimeline       bool    `yaml:"show_timeline"`
+	ShowWheelByDefault bool    `yaml:"show_wheel_by_default"`
+	CursorStyle        string  `yaml:"cursor_style"` // block, line, underline
+	AnimationSmooth    bool    `yaml:"animation_smooth"`
+	ProgressStyle      string  `yaml:"progress_style"` // bar, spinner, minimal
+	BorderStyle        string  `yaml:"border_style"`   // rounded, thick, double, ascii
+	TimelineStyle      string  `yaml:"timeline_style"` // compact, detailed, minimal
+	StatusBarPosition  string  `yaml:"status_bar_position"` // top, bottom
 }
 
 // ColorScheme defines the color palette
@@ -78,6 +82,22 @@ type ConvertConfig struct {
 	Quality       string `yaml:"quality"` // low, medium, high
 }
 
+// StartupConfig contains startup screen preferences
+type StartupConfig struct {
+	ShowStartupPage   bool   `yaml:"show_startup_page"`    // Show startup page on launch
+	ArtworkFile       string `yaml:"artwork_file"`         // Custom ASCII art file for logo
+	ArtworkInline     string `yaml:"artwork_inline"`       // Inline ASCII art (multiline)
+	ArtworkBorder     bool   `yaml:"artwork_border"`       // Show border around artwork
+	ArtworkOffsetX    int    `yaml:"artwork_offset_x"`     // X offset for artwork
+	ArtworkOffsetY    int    `yaml:"artwork_offset_y"`     // Y offset for artwork
+	ArtworkWidth      int    `yaml:"artwork_width"`        // Max width (0 = auto)
+	ArtworkHeight     int    `yaml:"artwork_height"`       // Max height (0 = auto)
+	ShowRecentFiles   bool   `yaml:"show_recent_files"`    // Show recent files panel
+	ShowTips          bool   `yaml:"show_tips"`            // Show rotating tips
+	TipRotationSec    int    `yaml:"tip_rotation_seconds"` // Seconds before rotating tips
+	BreathingEffect   bool   `yaml:"breathing_effect"`     // Enable breathing animation
+}
+
 // KeyBindings contains custom keybindings
 type KeyBindings struct {
 	Play        string `yaml:"play,omitempty"`
@@ -104,13 +124,16 @@ var (
 			ZenMode:          false,
 		},
 		UI: UIConfig{
-			Theme:              "dark",
+			Theme:              "tokyo-night",
 			ShowStatusBar:      true,
 			ShowTimeline:       true,
 			ShowWheelByDefault: false,
 			CursorStyle:        "line",
 			AnimationSmooth:    true,
 			ProgressStyle:      "bar",
+			BorderStyle:        "rounded",
+			TimelineStyle:      "detailed",
+			StatusBarPosition:  "bottom",
 		},
 		Colors: ColorScheme{
 			Name:       "default",
@@ -131,6 +154,20 @@ var (
 			DefaultChars:   "",
 			PreserveAspect: true,
 			Quality:        "high",
+		},
+		Startup: StartupConfig{
+			ShowStartupPage:   true,
+			ArtworkFile:       "",
+			ArtworkInline:     "",
+			ArtworkBorder:     true,
+			ArtworkOffsetX:    0,
+			ArtworkOffsetY:    0,
+			ArtworkWidth:      0,
+			ArtworkHeight:     0,
+			ShowRecentFiles:   true,
+			ShowTips:          true,
+			TipRotationSec:    5,
+			BreathingEffect:   true,
 		},
 	}
 )
@@ -303,3 +340,45 @@ func (c *Config) AddRecentFile(path string, frames int) {
 func (c *Config) GetRecentFiles() []RecentFile {
 	return c.Recent.Files
 }
+
+// GetStartupArtwork returns the custom startup artwork or default
+func (c *Config) GetStartupArtwork() string {
+	// Try loading from file first
+	if c.Startup.ArtworkFile != "" {
+		// Try absolute path first
+		if data, err := os.ReadFile(c.Startup.ArtworkFile); err == nil {
+			return string(data)
+		}
+		
+		// Try relative to config directory
+		dir, err := ConfigDir()
+		if err == nil {
+			artPath := filepath.Join(dir, c.Startup.ArtworkFile)
+			if data, err := os.ReadFile(artPath); err == nil {
+				return string(data)
+			}
+		}
+	}
+	
+	// Use inline artwork if specified
+	if c.Startup.ArtworkInline != "" {
+		return c.Startup.ArtworkInline
+	}
+	
+	// Return default logo
+	return DefaultStartupArtwork
+}
+
+// DefaultStartupArtwork is the default ASCII art logo
+const DefaultStartupArtwork = `
+    ▄▄▄        ▄▄▄       ██▀███  ▄▄▄█████▓
+   ▒████▄     ▒████▄    ▓██ ▒ ██▒▓  ██▒ ▓▒
+   ▒██  ▀█▄   ▒██  ▀█▄  ▓██ ░▄█ ▒▒ ▓██░ ▒░
+   ░██▄▄▄▄██  ░██▄▄▄▄██ ▒██▀▀█▄  ░ ▓██▓ ░ 
+    ▓█   ▓██▒  ▓█   ▓██▒░██▓ ▒██▒  ▒██▒ ░ 
+    ▒▒   ▓▒█░  ▒▒   ▓▒█░░ ▒▓ ░▒▓░  ▒ ░░   
+     ▒   ▒▒ ░   ▒   ▒▒ ░  ░▒ ░ ▒░    ░    
+     ░   ▒      ░   ▒     ░░   ░   ░      
+         ░  ░       ░  ░   ░              
+`
+

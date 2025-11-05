@@ -362,24 +362,33 @@ func (s StartupPage) View() string {
 }
 
 func (s StartupPage) renderHeader() string {
-	// ASCII art logo with breathing effect
-	logo := `
-    ▄▄▄        ▄▄▄       ██▀███  ▄▄▄█████▓
-   ▒████▄     ▒████▄    ▓██ ▒ ██▒▓  ██▒ ▓▒
-   ▒██  ▀█▄   ▒██  ▀█▄  ▓██ ░▄█ ▒▒ ▓██░ ▒░
-   ░██▄▄▄▄██  ░██▄▄▄▄██ ▒██▀▀█▄  ░ ▓██▓ ░ 
-    ▓█   ▓██▒  ▓█   ▓██▒░██▓ ▒██▒  ▒██▒ ░ 
-    ▒▒   ▓▒█░  ▒▒   ▓▒█░░ ▒▓ ░▒▓░  ▒ ░░   
-     ▒   ▒▒ ░   ▒   ▒▒ ░  ░▒ ░ ▒░    ░    
-     ░   ▒      ░   ▒     ░░   ░   ░      
-         ░  ░       ░  ░   ░              
-`
+	// Get custom or default ASCII art logo
+	logo := s.config.GetStartupArtwork()
 	
+	// Apply border if configured
+	if s.config.Startup.ArtworkBorder {
+		lines := strings.Split(strings.TrimSpace(logo), "\n")
+		maxWidth := 0
+		for _, line := range lines {
+			if len(line) > maxWidth {
+				maxWidth = len(line)
+			}
+		}
+		
+		borderStyle := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(s.theme.Border).
+			Padding(1, 2)
+		
+		logo = borderStyle.Render(logo)
+	}
+	
+	// Apply breathing effect
 	logoStyle := lipgloss.NewStyle().
 		Foreground(s.theme.AccentPrimary).
 		Bold(true)
 	
-	if s.breathing.CurrentAlpha() > 0.9 {
+	if s.config.Startup.BreathingEffect && s.breathing.CurrentAlpha() > 0.9 {
 		logoStyle = logoStyle.Foreground(s.theme.AccentSecondary)
 	}
 	
