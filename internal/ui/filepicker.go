@@ -217,8 +217,12 @@ func (f FilePickerScreen) handleSelect() (tea.Model, tea.Cmd) {
 }
 
 func (f FilePickerScreen) View() string {
-	if f.width == 0 {
-		return "Loading..."
+	// Use defaults if not set yet
+	width := f.width
+	height := f.height
+	if width == 0 {
+		width = 120
+		height = 40
 	}
 	
 	var b strings.Builder
@@ -305,8 +309,8 @@ func (f FilePickerScreen) View() string {
 		Width(70)
 	
 	return lipgloss.Place(
-		f.width,
-		f.height,
+		width,
+		height,
 		lipgloss.Center,
 		lipgloss.Center,
 		box.Render(b.String()),

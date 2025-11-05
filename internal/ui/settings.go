@@ -199,8 +199,12 @@ func (s *SettingsScreen) applyToConfig(setting *settingItem) {
 }
 
 func (s SettingsScreen) View() string {
-	if s.width == 0 {
-		return "Loading..."
+	// Use defaults if not set yet
+	width := s.width
+	height := s.height
+	if width == 0 {
+		width = 120
+		height = 40
 	}
 	
 	var b strings.Builder
@@ -279,8 +283,8 @@ func (s SettingsScreen) View() string {
 		Width(80)
 	
 	return lipgloss.Place(
-		s.width,
-		s.height,
+		width,
+		height,
 		lipgloss.Center,
 		lipgloss.Center,
 		box.Render(b.String()),
@@ -333,6 +337,14 @@ func (e ExamplesScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (e ExamplesScreen) View() string {
+	// Use defaults if not set yet
+	width := e.width
+	height := e.height
+	if width == 0 {
+		width = 120
+		height = 40
+	}
+	
 	titleStyle := lipgloss.NewStyle().
 		Foreground(e.theme.AccentPrimary).
 		Bold(true).
@@ -356,8 +368,8 @@ func (e ExamplesScreen) View() string {
 		Padding(2, 4)
 	
 	return lipgloss.Place(
-		e.width,
-		e.height,
+		width,
+		height,
 		lipgloss.Center,
 		lipgloss.Center,
 		box.Render(content),

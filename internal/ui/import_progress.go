@@ -176,8 +176,12 @@ func (p ImportProgressScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (p ImportProgressScreen) View() string {
-	if p.width == 0 {
-		return "Loading..."
+	// Use defaults if not set yet
+	width := p.width
+	height := p.height
+	if width == 0 {
+		width = 120
+		height = 40
 	}
 	
 	var b strings.Builder
@@ -286,8 +290,8 @@ func (p ImportProgressScreen) View() string {
 		Width(80)
 	
 	return lipgloss.Place(
-		p.width,
-		p.height,
+		width,
+		height,
 		lipgloss.Center,
 		lipgloss.Center,
 		box.Render(b.String()),

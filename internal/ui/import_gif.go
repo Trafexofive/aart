@@ -205,8 +205,12 @@ func (g ImportGIFScreen) startImport() (tea.Model, tea.Cmd) {
 }
 
 func (g ImportGIFScreen) View() string {
-	if g.width == 0 {
-		return "Loading..."
+	// Use a default size if not set yet
+	width := g.width
+	height := g.height
+	if width == 0 {
+		width = 120
+		height = 40
 	}
 	
 	var b strings.Builder
@@ -381,8 +385,8 @@ func (g ImportGIFScreen) View() string {
 		Width(90)
 	
 	return lipgloss.Place(
-		g.width,
-		g.height,
+		width,
+		height,
 		lipgloss.Center,
 		lipgloss.Center,
 		box.Render(b.String()),
