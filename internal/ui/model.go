@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mlamkadm/aart/internal/config"
 )
 
 type Mode int
@@ -132,8 +133,19 @@ func tickCmd() tea.Cmd {
 }
 
 func New() Model {
+	return NewWithConfig(nil)
+}
+
+// NewWithConfig creates a model with configuration
+func NewWithConfig(cfg *config.Config) Model {
+	// Use defaults if no config provided
+	if cfg == nil {
+		c := config.DefaultConfig
+		cfg = &c
+	}
+
 	// Create initial frame
-	width, height := 80, 24
+	width, height := cfg.Editor.DefaultWidth, cfg.Editor.DefaultHeight
 	frame := NewFrame(width, height)
 	
 	// Add some demo art to frame 0
@@ -163,7 +175,7 @@ func New() Model {
 			if x >= width {
 				break
 			}
-			frame.Cells[y][x] = Cell{Char: r, FG: "#FFFFFF", BG: "#000000"}
+			frame.Cells[y][x] = Cell{Char: r, FG: cfg.Colors.Foreground, BG: cfg.Colors.Background}
 		}
 	}
 	
@@ -174,13 +186,24 @@ func New() Model {
 		frames[i] = NewFrame(width, height)
 	}
 	
-	return newModel(frames, "untitled.aart")
+	return newModelWithConfig(frames, "untitled.aart", cfg)
 }
 
 // NewWithFrames creates a model with imported frames
 func NewWithFrames(importedFrames []ImportedFrame) Model {
+	return NewWithFramesAndConfig(importedFrames, nil)
+}
+
+// NewWithFramesAndConfig creates a model with imported frames and config
+func NewWithFramesAndConfig(importedFrames []ImportedFrame, cfg *config.Config) Model {
 	if len(importedFrames) == 0 {
-		return New()
+		return NewWithConfig(cfg)
+	}
+	
+	// Use defaults if no config provided
+	if cfg == nil {
+		c := config.DefaultConfig
+		cfg = &c
 	}
 	
 	// Convert imported frames to internal format
@@ -207,7 +230,7 @@ func NewWithFrames(importedFrames []ImportedFrame) Model {
 		frames[i] = frame
 	}
 	
-	return newModel(frames, "imported.aart")
+	return newModelWithConfig(frames, "imported.aart", cfg)
 }
 
 // ImportedFrame represents a frame from the converter
@@ -226,20 +249,31 @@ type ImportedCell struct {
 }
 
 func newModel(frames []*Frame, filename string) Model {
+	return newModelWithConfig(frames, filename, nil)
+}
+
+func newModelWithConfig(frames []*Frame, filename string, cfg *config.Config) Model {
+	// Use defaults if no config provided
+	if cfg == nil {
+		c := config.DefaultConfig
+		cfg = &c
+	}
+
 	return Model{
 		mode:         ModeNormal,
 		cursor:       Pos{X: 40, Y: 12},
 		frames:       frames,
 		currentFrame: 0,
 		playing:      false,
-		fps:          12,
+		fps:          cfg.Editor.DefaultFPS,
 		selectedTool: ToolPencil,
 		fgChar:       '█',
-		fgColor:      "#FFFFFF",
-		bgColor:      "#000000",
+		fgColor:      cfg.Colors.Foreground,
+		bgColor:      cfg.Colors.Background,
 		brushSize:    1,
 		zoom:         1.0,
-		showGrid:     false,
+		showGrid:     cfg.Editor.ShowGrid,
+		zenMode:      cfg.Editor.ZenMode,
 		filename:     filename,
 		layers: []Layer{
 			{Name: "background", Visible: true, Opacity: 1.0, BlendMode: "normal"},
