@@ -41,11 +41,27 @@ func ConvertGifToFrames(source string, opts Options) ([]*Frame, error) {
 		return nil, fmt.Errorf("failed to load GIF: %w", err)
 	}
 
-	// Convert each frame
+	// Convert each frame with proper composition
 	frames := make([]*Frame, len(gifData.Image))
+	var previousFrame image.Image
+	
 	for i, img := range gifData.Image {
+		// Handle GIF disposal and composition
+		var composited image.Image
+		
+		if i == 0 || gifData.Disposal[i-1] == gif.DisposalBackground {
+			// First frame or previous frame disposed - use frame as-is
+			composited = img
+		} else {
+			// Composite current frame over previous
+			composited = compositeImages(previousFrame, img)
+		}
+		
+		// Save for next iteration
+		previousFrame = composited
+		
 		// Resize image to target dimensions
-		resized := resize.Resize(uint(opts.Width), uint(opts.Height), img, resize.Lanczos3)
+		resized := resize.Resize(uint(opts.Width), uint(opts.Height), composited, resize.Lanczos3)
 		
 		// Convert to ASCII
 		frame := convertImageToASCII(resized, opts)
@@ -61,6 +77,41 @@ func ConvertGifToFrames(source string, opts Options) ([]*Frame, error) {
 	}
 
 	return frames, nil
+}
+
+// compositeImages composites src over dst, handling transparency
+func compositeImages(dst, src image.Image) image.Image {
+	if dst == nil {
+		return src
+	}
+	
+	bounds := dst.Bounds()
+	srcBounds := src.Bounds()
+	
+	// Create RGBA image for composition
+	composited := image.NewRGBA(bounds)
+	
+	// Copy dst to composited
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			composited.Set(x, y, dst.At(x, y))
+		}
+	}
+	
+	// Composite src on top, respecting transparency
+	for y := srcBounds.Min.Y; y < srcBounds.Max.Y; y++ {
+		for x := srcBounds.Min.X; x < srcBounds.Max.X; x++ {
+			srcColor := src.At(x, y)
+			_, _, _, a := srcColor.RGBA()
+			
+			// Only draw non-transparent pixels
+			if a > 0 {
+				composited.Set(x, y, srcColor)
+			}
+		}
+	}
+	
+	return composited
 }
 
 // loadGif loads a GIF from URL or local file
