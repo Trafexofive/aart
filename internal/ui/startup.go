@@ -398,13 +398,12 @@ func (s StartupPage) View() string {
 	// Footer with complete navigation hints
 	b.WriteString(s.renderFooter())
 	
-	// Use top alignment instead of center for better 80x24 compatibility
-	// Only center horizontally
+	// Center both horizontally and vertically
 	return lipgloss.Place(
 		s.width,
 		s.height,
 		lipgloss.Center,
-		lipgloss.Top,
+		lipgloss.Center,
 		b.String(),
 		lipgloss.WithWhitespaceChars(" "),
 		lipgloss.WithWhitespaceForeground(s.theme.BgPrimary),
