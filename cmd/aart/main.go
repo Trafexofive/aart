@@ -128,8 +128,24 @@ func main() {
 	// Check if a file was passed as argument
 	args := flag.Args()
 	if len(args) > 0 {
-		// TODO: Load file
-		model = ui.NewWithConfig(cfg)
+		// Load the specified file
+		filepath := args[0]
+		
+		// Check if file exists and is .aa/.aart
+		if _, err := os.Stat(filepath); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: file not found: %s\n", filepath)
+			os.Exit(1)
+		}
+		
+		// Load the .aa file
+		aartFile, err := fileformat.Load(filepath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error loading file: %v\n", err)
+			os.Exit(1)
+		}
+		
+		// Create editor model with loaded file
+		model = ui.NewWithFile(cfg, filepath, aartFile)
 	} else {
 		// Show startup page
 		model = ui.NewStartupPage(cfg)

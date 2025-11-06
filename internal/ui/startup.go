@@ -379,20 +379,28 @@ func (s StartupPage) renderHeader() string {
 	logoStyle := lipgloss.NewStyle().
 		Foreground(logoColor)
 	
-	// Build compact header with proper alignment
+	// Render logo
 	logoRendered := logoStyle.Render(strings.TrimSpace(logo))
+	
+	// Apply border if configured
+	if s.config.Startup.ArtworkBorder {
+		borderStyle := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(s.theme.Border).
+			Padding(1, 2)
+		logoRendered = borderStyle.Render(logoRendered)
+	}
 	
 	// Tagline and version on separate line below logo
 	taglineStyle := lipgloss.NewStyle().
 		Foreground(s.theme.FgSecondary).
 		Align(lipgloss.Center)
 	
-	versionStyle := lipgloss.NewStyle().
-		Foreground(s.theme.FgMuted).
-		Align(lipgloss.Center)
-	
 	tagline := taglineStyle.Render("ASCII Art Animation Editor")
-	subtitle := versionStyle.Render("Convert • Create • Animate         v0.1.0")
+	subtitle := lipgloss.NewStyle().
+		Foreground(s.theme.FgMuted).
+		Align(lipgloss.Center).
+		Render("Convert • Create • Animate         v0.1.0")
 	
 	// Center everything
 	width := 104 // Width for centering

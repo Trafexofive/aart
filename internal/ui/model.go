@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mlamkadm/aart/internal/config"
+	"github.com/mlamkadm/aart/internal/fileformat"
 )
 
 type Mode int
@@ -196,6 +197,71 @@ func NewWithConfig(cfg *config.Config) Model {
 	}
 	
 	return newModelWithConfig(frames, "untitled.aart", cfg)
+}
+
+// NewWithFile creates a model from a loaded .aa file
+func NewWithFile(cfg *config.Config, filename string, aartFile *fileformat.AartFile) Model {
+	// Use defaults if no config provided
+	if cfg == nil {
+		c := config.DefaultConfig
+		cfg = &c
+	}
+	
+	// Convert fileformat frames to internal frames
+	frames := make([]*Frame, len(aartFile.Frames))
+	
+	for i, ffFrame := range aartFile.Frames {
+		frame := NewFrame(aartFile.Canvas.Width, aartFile.Canvas.Height)
+		
+		// Copy cells from fileformat to internal format
+		for y := 0; y < len(ffFrame.Cells) && y < aartFile.Canvas.Height; y++ {
+			for x := 0; x < len(ffFrame.Cells[y]) && x < aartFile.Canvas.Width; x++ {
+				ffCell := ffFrame.Cells[y][x]
+				var char rune
+				if ffCell.Char == "" {
+					char = ' '
+				} else {
+					runes := []rune(ffCell.Char)
+					if len(runes) > 0 {
+						char = runes[0]
+					} else {
+						char = ' '
+					}
+				}
+				
+				frame.Cells[y][x] = Cell{
+					Char: char,
+					FG:   ffCell.Foreground,
+					BG:   ffCell.Background,
+				}
+			}
+		}
+		
+		frame.Modified = false
+		frame.Delay = ffFrame.Duration
+		frames[i] = frame
+	}
+	
+	// If no frames, create one empty frame
+	if len(frames) == 0 {
+		frames = append(frames, NewFrame(cfg.Editor.DefaultWidth, cfg.Editor.DefaultHeight))
+	}
+	
+	// Calculate FPS from first frame duration
+	fps := cfg.Editor.DefaultFPS
+	if len(frames) > 0 && frames[0].Delay > 0 {
+		fps = 1000 / frames[0].Delay
+		if fps < 1 {
+			fps = 1
+		}
+		if fps > 60 {
+			fps = 60
+		}
+	}
+	
+	model := newModelWithConfig(frames, filename, cfg)
+	model.fps = fps
+	return model
 }
 
 // NewWithFrames creates a model with imported frames
