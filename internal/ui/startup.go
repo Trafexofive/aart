@@ -805,19 +805,44 @@ func loadAnimatedArtwork(path string, cfg *config.Config) ([]string, int) {
 		}
 	}
 	
-	// Extract ASCII art from each frame
+	// Extract ASCII art from each frame (TEXT ONLY, no colors)
 	frames := make([]string, len(aartFile.Frames))
+	
+	// Determine max width to fit in header (leave room for border if enabled)
+	maxWidth := 80
+	if cfg.Startup.ArtworkBorder {
+		maxWidth = 76 // Account for border padding
+	}
+	
 	for i, frame := range aartFile.Frames {
 		var lines []string
+		
+		// Limit to reasonable height for logo (max 20 lines)
+		maxHeight := 20
+		if len(frame.Cells) > maxHeight {
+			// Take center portion
+			startY := (len(frame.Cells) - maxHeight) / 2
+			frame.Cells = frame.Cells[startY : startY+maxHeight]
+		}
+		
 		for _, row := range frame.Cells {
 			var line strings.Builder
+			charCount := 0
+			
 			for _, cell := range row {
-				if cell.Char == "" {
+				if charCount >= maxWidth {
+					break
+				}
+				
+				// Extract ONLY the character, ignore colors
+				if cell.Char == "" || cell.Char == " " {
 					line.WriteString(" ")
 				} else {
 					line.WriteString(cell.Char)
 				}
+				charCount++
 			}
+			
 			// Trim trailing spaces
 			lineStr := strings.TrimRight(line.String(), " ")
 			lines = append(lines, lineStr)
@@ -826,6 +851,11 @@ func loadAnimatedArtwork(path string, cfg *config.Config) ([]string, int) {
 		// Remove trailing empty lines
 		for len(lines) > 0 && lines[len(lines)-1] == "" {
 			lines = lines[:len(lines)-1]
+		}
+		
+		// Remove leading empty lines
+		for len(lines) > 0 && lines[0] == "" {
+			lines = lines[1:]
 		}
 		
 		frames[i] = strings.Join(lines, "\n")
