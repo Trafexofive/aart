@@ -11,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mlamkadm/aart/internal/config"
+	"github.com/mlamkadm/aart/internal/fileformat"
 )
 
 type editorFinishedMsg struct{}
@@ -39,6 +40,12 @@ type StartupPage struct {
 	recentFiles      []config.RecentFile
 	breathing        *BreathingEffect
 	currentTime      time.Time
+	
+	// Animated artwork support
+	artworkFrames    []string  // All frames of animated artwork
+	currentArtFrame  int       // Current frame index
+	artworkFPS       int       // Animation FPS
+	lastFrameTime    time.Time // Last frame update time
 }
 
 // StartupOption represents a menu option
@@ -124,17 +131,33 @@ func NewStartupPage(cfg *config.Config) StartupPage {
 		},
 	}
 	
+	// Load animated artwork frames if .aa file
+	artworkFrames := []string{}
+	artworkFPS := 12 // Default FPS
+	
+	if cfg.Startup.ArtworkFile != "" {
+		frames, fps := loadAnimatedArtwork(cfg.Startup.ArtworkFile, cfg)
+		if len(frames) > 0 {
+			artworkFrames = frames
+			artworkFPS = fps
+		}
+	}
+	
 	return StartupPage{
-		theme:          theme,
-		styles:         NewStyles(theme),
-		config:         cfg,
-		selectedOption: 0,
-		selectedRecent: 0,
-		focusArea:      "menu",
-		options:        options,
-		recentFiles:    cfg.GetRecentFiles(),
-		breathing:      NewBreathingEffect(4 * time.Second),
-		currentTime:    time.Now(),
+		theme:           theme,
+		styles:          NewStyles(theme),
+		config:          cfg,
+		selectedOption:  0,
+		selectedRecent:  0,
+		focusArea:       "menu",
+		options:         options,
+		recentFiles:     cfg.GetRecentFiles(),
+		breathing:       NewBreathingEffect(4 * time.Second),
+		currentTime:     time.Now(),
+		artworkFrames:   artworkFrames,
+		currentArtFrame: 0,
+		artworkFPS:      artworkFPS,
+		lastFrameTime:   time.Now(),
 	}
 }
 
@@ -227,6 +250,16 @@ func (s StartupPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	
 	case tickMsg:
 		s.currentTime = time.Time(msg)
+		
+		// Animate artwork frames if we have multiple
+		if len(s.artworkFrames) > 1 {
+			frameDuration := time.Duration(1000/s.artworkFPS) * time.Millisecond
+			if time.Since(s.lastFrameTime) >= frameDuration {
+				s.currentArtFrame = (s.currentArtFrame + 1) % len(s.artworkFrames)
+				s.lastFrameTime = time.Now()
+			}
+		}
+		
 		return s, tickCmd()
 	}
 	
@@ -368,7 +401,14 @@ func (s StartupPage) View() string {
 
 func (s StartupPage) renderHeader() string {
 	// Get custom or default ASCII art logo
-	logo := s.config.GetStartupArtwork()
+	var logo string
+	
+	// Use animated frame if available
+	if len(s.artworkFrames) > 0 {
+		logo = s.artworkFrames[s.currentArtFrame]
+	} else {
+		logo = s.config.GetStartupArtwork()
+	}
 	
 	// Apply breathing effect to logo color
 	logoColor := s.theme.AccentPrimary
@@ -746,4 +786,62 @@ func formatTimeAgo(t time.Time) string {
 		}
 		return fmt.Sprintf("%d days ago", days)
 	}
+}
+
+// loadAnimatedArtwork loads all frames from a .aa file for animated startup logo
+func loadAnimatedArtwork(path string, cfg *config.Config) ([]string, int) {
+	// Try absolute path first
+	aartFile, err := fileformat.Load(path)
+	if err != nil {
+		// Try relative to config directory
+		dir, err := config.ConfigDir()
+		if err == nil {
+			artPath := filepath.Join(dir, path)
+			aartFile, err = fileformat.Load(artPath)
+		}
+		if err != nil {
+			// Not a .aa file, return empty
+			return []string{}, 12
+		}
+	}
+	
+	// Extract ASCII art from each frame
+	frames := make([]string, len(aartFile.Frames))
+	for i, frame := range aartFile.Frames {
+		var lines []string
+		for _, row := range frame.Cells {
+			var line strings.Builder
+			for _, cell := range row {
+				if cell.Char == "" {
+					line.WriteString(" ")
+				} else {
+					line.WriteString(cell.Char)
+				}
+			}
+			// Trim trailing spaces
+			lineStr := strings.TrimRight(line.String(), " ")
+			lines = append(lines, lineStr)
+		}
+		
+		// Remove trailing empty lines
+		for len(lines) > 0 && lines[len(lines)-1] == "" {
+			lines = lines[:len(lines)-1]
+		}
+		
+		frames[i] = strings.Join(lines, "\n")
+	}
+	
+	// Calculate FPS from first frame duration
+	fps := 12
+	if len(aartFile.Frames) > 0 && aartFile.Frames[0].Duration > 0 {
+		fps = 1000 / aartFile.Frames[0].Duration
+		if fps < 1 {
+			fps = 1
+		}
+		if fps > 60 {
+			fps = 60
+		}
+	}
+	
+	return frames, fps
 }
