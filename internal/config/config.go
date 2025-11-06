@@ -90,10 +90,11 @@ type StartupConfig struct {
 	ArtworkFile       string `yaml:"artwork_file"`         // Custom ASCII art file for logo
 	ArtworkInline     string `yaml:"artwork_inline"`       // Inline ASCII art (multiline)
 	ArtworkBorder     bool   `yaml:"artwork_border"`       // Show border around artwork
+	ArtworkSize       string `yaml:"artwork_size"`         // Size as percentage (e.g. "40p" = 40% of screen height)
 	ArtworkOffsetX    int    `yaml:"artwork_offset_x"`     // X offset for artwork
 	ArtworkOffsetY    int    `yaml:"artwork_offset_y"`     // Y offset for artwork
-	ArtworkWidth      int    `yaml:"artwork_width"`        // Max width (0 = auto)
-	ArtworkHeight     int    `yaml:"artwork_height"`       // Max height (0 = auto)
+	ArtworkWidth      int    `yaml:"artwork_width"`        // Max width (0 = auto, overridden by artwork_size)
+	ArtworkHeight     int    `yaml:"artwork_height"`       // Max height (0 = auto, overridden by artwork_size)
 	ShowRecentFiles   bool   `yaml:"show_recent_files"`    // Show recent files panel
 	ShowTips          bool   `yaml:"show_tips"`            // Show rotating tips
 	TipRotationSec    int    `yaml:"tip_rotation_seconds"` // Seconds before rotating tips

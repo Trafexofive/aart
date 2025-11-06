@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -136,7 +137,8 @@ func NewStartupPage(cfg *config.Config) StartupPage {
 	artworkFPS := 12 // Default FPS
 	
 	if cfg.Startup.ArtworkFile != "" {
-		frames, fps := loadAnimatedArtwork(cfg.Startup.ArtworkFile, cfg)
+		// Pass terminal dimensions for size calculation
+		frames, fps := loadAnimatedArtwork(cfg.Startup.ArtworkFile, cfg, 0, 0) // Will be updated on first render
 		if len(frames) > 0 {
 			artworkFrames = frames
 			artworkFPS = fps
@@ -431,27 +433,11 @@ func (s StartupPage) renderHeader() string {
 		logoRendered = borderStyle.Render(logoRendered)
 	}
 	
-	// Tagline and version on separate line below logo
-	taglineStyle := lipgloss.NewStyle().
-		Foreground(s.theme.FgSecondary).
-		Align(lipgloss.Center)
-	
-	tagline := taglineStyle.Render("ASCII Art Animation Editor")
-	subtitle := lipgloss.NewStyle().
-		Foreground(s.theme.FgMuted).
-		Align(lipgloss.Center).
-		Render("Convert • Create • Animate         v0.1.0")
-	
-	// Center everything
-	width := 104 // Width for centering
-	
-	return lipgloss.JoinVertical(
-		lipgloss.Center,
-		lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Render(logoRendered),
-		lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Render(tagline),
-		lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Render(subtitle),
-	)
+	// Center logo
+	width := 104
+	return lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Render(logoRendered)
 }
+
 
 func (s StartupPage) renderMenuPanel() string {
 	var menuItems []string
@@ -729,6 +715,18 @@ func (s StartupPage) renderRecentPanel() string {
 }
 
 func (s StartupPage) renderFooter() string {
+	// Tagline and version first
+	taglineStyle := lipgloss.NewStyle().
+		Foreground(s.theme.FgSecondary).
+		Align(lipgloss.Center)
+	
+	tagline := taglineStyle.Render("ASCII Art Animation Editor")
+	subtitle := lipgloss.NewStyle().
+		Foreground(s.theme.FgMuted).
+		Align(lipgloss.Center).
+		Render("Convert • Create • Animate         v0.1.0")
+	
+	// Then navigation hints below
 	hintStyle := lipgloss.NewStyle().
 		Foreground(s.theme.FgSecondary).
 		Bold(true)
@@ -747,10 +745,18 @@ func (s StartupPage) renderFooter() string {
 		divStyle.Render(" │ ") +
 		hintStyle.Render("q:quit")
 	
-	return lipgloss.NewStyle().
-		Width(100).
+	centeredHints := lipgloss.NewStyle().
+		Width(s.width).
 		Align(lipgloss.Center).
 		Render(hints)
+	
+	// Combine tagline, subtitle, and hints
+	return lipgloss.JoinVertical(
+		lipgloss.Center,
+		tagline,
+		subtitle,
+		centeredHints,
+	)
 }
 
 // Helper functions
@@ -789,7 +795,7 @@ func formatTimeAgo(t time.Time) string {
 }
 
 // loadAnimatedArtwork loads all frames from a .aa file for animated startup logo
-func loadAnimatedArtwork(path string, cfg *config.Config) ([]string, int) {
+func loadAnimatedArtwork(path string, cfg *config.Config, termWidth, termHeight int) ([]string, int) {
 	// Try absolute path first
 	aartFile, err := fileformat.Load(path)
 	if err != nil {
@@ -805,27 +811,62 @@ func loadAnimatedArtwork(path string, cfg *config.Config) ([]string, int) {
 		}
 	}
 	
+	// Calculate max dimensions based on artwork_size
+	maxWidth := 80
+	maxHeight := 20
+	
+	if cfg.Startup.ArtworkSize != "" && termHeight > 0 {
+		// Parse percentage (e.g. "40p" = 40% of screen)
+		sizeStr := strings.TrimSuffix(cfg.Startup.ArtworkSize, "p")
+		if percent, err := strconv.ParseInt(sizeStr, 10, 64); err == nil && percent > 0 && percent <= 100 {
+			// Calculate height as percentage of terminal
+			maxHeight = int(float64(termHeight) * float64(percent) / 100.0)
+			if maxHeight < 10 {
+				maxHeight = 10
+			}
+			if maxHeight > 40 {
+				maxHeight = 40
+			}
+			
+			// Calculate width proportionally (keep it reasonable)
+			maxWidth = maxHeight * 3 // Roughly 3:1 ratio for ASCII art
+			if maxWidth > termWidth-10 {
+				maxWidth = termWidth - 10
+			}
+		}
+	}
+	
+	// Account for border padding
+	if cfg.Startup.ArtworkBorder {
+		maxWidth -= 6  // Border + padding
+		maxHeight -= 4 // Border + padding
+	}
+	
+	// Override with explicit width/height if artwork_size not set
+	if cfg.Startup.ArtworkSize == "" {
+		if cfg.Startup.ArtworkWidth > 0 {
+			maxWidth = cfg.Startup.ArtworkWidth
+		}
+		if cfg.Startup.ArtworkHeight > 0 {
+			maxHeight = cfg.Startup.ArtworkHeight
+		}
+	}
+	
 	// Extract ASCII art from each frame (TEXT ONLY, no colors)
 	frames := make([]string, len(aartFile.Frames))
-	
-	// Determine max width to fit in header (leave room for border if enabled)
-	maxWidth := 80
-	if cfg.Startup.ArtworkBorder {
-		maxWidth = 76 // Account for border padding
-	}
 	
 	for i, frame := range aartFile.Frames {
 		var lines []string
 		
-		// Limit to reasonable height for logo (max 20 lines)
-		maxHeight := 20
-		if len(frame.Cells) > maxHeight {
+		// Limit to max height
+		frameCells := frame.Cells
+		if len(frameCells) > maxHeight {
 			// Take center portion
-			startY := (len(frame.Cells) - maxHeight) / 2
-			frame.Cells = frame.Cells[startY : startY+maxHeight]
+			startY := (len(frameCells) - maxHeight) / 2
+			frameCells = frameCells[startY : startY+maxHeight]
 		}
 		
-		for _, row := range frame.Cells {
+		for _, row := range frameCells {
 			var line strings.Builder
 			charCount := 0
 			
