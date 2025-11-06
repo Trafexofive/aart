@@ -249,6 +249,16 @@ func (s StartupPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		s.width = msg.Width
 		s.height = msg.Height
+		
+		// Reload artwork frames with proper terminal dimensions if artwork_size is set
+		if s.config.Startup.ArtworkFile != "" && s.config.Startup.ArtworkSize != "" && len(s.artworkFrames) == 0 {
+			frames, fps := loadAnimatedArtwork(s.config.Startup.ArtworkFile, s.config, msg.Width, msg.Height)
+			if len(frames) > 0 {
+				s.artworkFrames = frames
+				s.artworkFPS = fps
+				s.lastFrameTime = time.Now()
+			}
+		}
 	
 	case tickMsg:
 		s.currentTime = time.Time(msg)
