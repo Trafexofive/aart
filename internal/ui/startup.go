@@ -444,8 +444,7 @@ func (s StartupPage) renderHeader() string {
 	}
 	
 	// Center logo
-	width := 104
-	return lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Render(logoRendered)
+	return lipgloss.NewStyle().Width(s.width).Align(lipgloss.Center).Render(logoRendered)
 }
 
 
