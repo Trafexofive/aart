@@ -1,0 +1,152 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                    AART NEOVIM PLUGIN - QUICK START                        ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+┌─ WHAT YOU GET ────────────────────────────────────────────────────────────┐
+│ • ASCII animations in your Neovim alpha dashboard                         │
+│ • Floating window animation viewer                                        │
+│ • Frame export tools                                                      │
+│ • Fast caching system                                                     │
+└───────────────────────────────────────────────────────────────────────────┘
+
+┌─ 3-STEP INSTALLATION ─────────────────────────────────────────────────────┐
+│                                                                            │
+│ 1. Add to lazy.nvim (e.g., ~/.config/nvim/lua/plugins/aart.lua):         │
+│                                                                            │
+│    return {                                                               │
+│        dir = "~/repos/aart/lua/aart",                                     │
+│        config = function()                                                │
+│            require('aart').setup({ cache_enabled = true })               │
+│            require('aart').setup_commands()                               │
+│        end                                                                │
+│    }                                                                      │
+│                                                                            │
+│ 2. Update alpha-nvim config:                                             │
+│                                                                            │
+│    local aart = require('aart')                                           │
+│    local header = aart.get_alpha_animation("~/.config/nvim/logo.aart", { │
+│        frame = 0,                                                         │
+│        padding = 0,                                                       │
+│    })                                                                     │
+│                                                                            │
+│ 3. Create animation:                                                      │
+│                                                                            │
+│    aart --import-gif logo.gif --output ~/.config/nvim/logo.aart          │
+│                                                                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+┌─ COMMANDS ────────────────────────────────────────────────────────────────┐
+│                                                                            │
+│  :AartOpen ~/.config/nvim/logo.aart    # View animation in floating win  │
+│  :AartExport <file> <dir>              # Export frames as text files     │
+│                                                                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+┌─ LUA API (QUICK REFERENCE) ───────────────────────────────────────────────┐
+│                                                                            │
+│  local aart = require('aart')                                             │
+│                                                                            │
+│  -- Get frame for dashboard (FAST - recommended)                          │
+│  local frame = aart.get_static_frame("~/logo.aart", 0)                    │
+│  -> { "line1", "line2", ... }                                             │
+│                                                                            │
+│  -- Get frame for alpha-nvim (with padding)                               │
+│  local header = aart.get_alpha_animation("~/logo.aart", {                 │
+│      frame = 0,                                                           │
+│      padding = 1                                                          │
+│  })                                                                       │
+│                                                                            │
+│  -- Load full animation                                                   │
+│  local anim = aart.load_animation("~/spinner.aart")                       │
+│  -> { frames = {...}, fps = 12, frame_count = 150 }                       │
+│                                                                            │
+│  -- Play in floating window                                               │
+│  aart.open_animation("~/logo.aart")                                       │
+│                                                                            │
+│  -- Create animated buffer                                                │
+│  local buf = aart.create_animated_buffer("~/logo.aart", {                 │
+│      open_window = true,                                                  │
+│      loop = true,                                                         │
+│  })                                                                       │
+│                                                                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+┌─ YOUR ALPHA CONFIG INTEGRATION ───────────────────────────────────────────┐
+│                                                                            │
+│  In your 3-column layout (calendar | header | sysinfo), just replace:    │
+│                                                                            │
+│  local header_lines = {                                                   │
+│      '    ███╗   ██╗██╗   ██╗██╗███╗   ███╗',                           │
+│      -- ... static art                                                    │
+│  }                                                                        │
+│                                                                            │
+│  With:                                                                    │
+│                                                                            │
+│  local aart = require('aart')                                             │
+│  local file = vim.fn.expand("~/.config/nvim/logo.aart")                  │
+│  local header_lines = {}                                                  │
+│                                                                            │
+│  if vim.fn.filereadable(file) == 1 then                                  │
+│      header_lines = aart.get_alpha_animation(file, { frame = 0 })        │
+│  else                                                                     │
+│      header_lines = { "..." }  -- fallback                               │
+│  end                                                                      │
+│                                                                            │
+│  Then use header_lines in your layout as before!                         │
+│                                                                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+┌─ CREATE ANIMATIONS ───────────────────────────────────────────────────────┐
+│                                                                            │
+│  # Import from GIF                                                        │
+│  aart --import-gif logo.gif --output ~/.config/nvim/logo.aart            │
+│                                                                            │
+│  # Import from URL                                                        │
+│  aart --import-gif https://example.com/cool.gif --output logo.aart       │
+│                                                                            │
+│  # Create in TUI                                                          │
+│  aart                                                                     │
+│  # Then :w ~/.config/nvim/logo.aart                                       │
+│                                                                            │
+│  # Use example                                                            │
+│  cp ~/repos/aart/examples/*.aart ~/.config/nvim/                          │
+│                                                                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+┌─ DOCUMENTATION FILES ─────────────────────────────────────────────────────┐
+│                                                                            │
+│  PLUGIN_INSTALL.md      - This quick start in markdown                   │
+│  NEOVIM_PLUGIN.md       - Complete integration guide                     │
+│  LUA_PLUGIN_SUMMARY.md  - Technical summary                              │
+│  lua/aart/README.md     - Full API reference                             │
+│  lua/aart/examples.lua  - Usage examples                                 │
+│                                                                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+┌─ TROUBLESHOOTING ─────────────────────────────────────────────────────────┐
+│                                                                            │
+│  Module not found:                                                        │
+│    :lua vim.print(vim.fn.expand("~/repos/aart/lua/aart"))                │
+│    -> Check path matches where you cloned aart                           │
+│                                                                            │
+│  Animation not loading:                                                   │
+│    :lua vim.print(vim.fn.filereadable("~/.config/nvim/logo.aart"))       │
+│    -> Should return 1                                                     │
+│                                                                            │
+│  Debug frame loading:                                                     │
+│    :lua vim.print(require('aart').get_static_frame("~/.config/nvim/logo.aart", 0)) │
+│    -> Should show frame lines                                             │
+│                                                                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+┌─ KEY ADVANTAGES ──────────────────────────────────────────────────────────┐
+│                                                                            │
+│  ✓ No binary dependency - parses .aart JSON directly                     │
+│  ✓ Fast - cached animations load instantly                               │
+│  ✓ Simple - 3 lines to integrate with alpha-nvim                         │
+│  ✓ Portable - works anywhere Neovim runs                                 │
+│  ✓ Compatible - works with your exact alpha layout                       │
+│                                                                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Ready to use! See NEOVIM_PLUGIN.md for your complete alpha integration.

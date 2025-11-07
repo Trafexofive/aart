@@ -248,10 +248,19 @@ func playRawAnimation(aartFile *fileformat.AartFile) {
 					}
 					
 					for _, cell := range row {
-						if cell.Char == "" {
-							fmt.Print(" ")
+						char := cell.Char
+						if char == "" {
+							char = " "
+						}
+						
+						// Apply colors if present
+						if cell.Foreground != "" && cell.Foreground != "#FFFFFF" {
+							fg := hexToRGB(cell.Foreground)
+							bg := hexToRGB(cell.Background)
+							fmt.Printf("\033[38;2;%d;%d;%dm\033[48;2;%d;%d;%dm%s\033[0m", 
+								fg[0], fg[1], fg[2], bg[0], bg[1], bg[2], char)
 						} else {
-							fmt.Print(cell.Char)
+							fmt.Print(char)
 						}
 					}
 					fmt.Println()
@@ -260,10 +269,19 @@ func playRawAnimation(aartFile *fileformat.AartFile) {
 				// Normal rendering without centering
 				for _, row := range frame.Cells {
 					for _, cell := range row {
-						if cell.Char == "" {
-							fmt.Print(" ")
+						char := cell.Char
+						if char == "" {
+							char = " "
+						}
+						
+						// Apply colors if present
+						if cell.Foreground != "" && cell.Foreground != "#FFFFFF" {
+							fg := hexToRGB(cell.Foreground)
+							bg := hexToRGB(cell.Background)
+							fmt.Printf("\033[38;2;%d;%d;%dm\033[48;2;%d;%d;%dm%s\033[0m", 
+								fg[0], fg[1], fg[2], bg[0], bg[1], bg[2], char)
 						} else {
-							fmt.Print(cell.Char)
+							fmt.Print(char)
 						}
 					}
 					fmt.Println()
@@ -274,6 +292,23 @@ func playRawAnimation(aartFile *fileformat.AartFile) {
 			frameIdx = (frameIdx + 1) % len(aartFile.Frames)
 		}
 	}
+}
+
+// hexToRGB converts hex color string to RGB values
+func hexToRGB(hex string) [3]int {
+	// Remove # if present
+	if len(hex) > 0 && hex[0] == '#' {
+		hex = hex[1:]
+	}
+	
+	// Default to black if invalid
+	if len(hex) != 6 {
+		return [3]int{0, 0, 0}
+	}
+	
+	var r, g, b int
+	fmt.Sscanf(hex, "%02x%02x%02x", &r, &g, &b)
+	return [3]int{r, g, b}
 }
 
 func handleGifImport(cfg *config.Config, flagsSet map[string]bool) error {
