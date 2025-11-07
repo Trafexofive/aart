@@ -34,6 +34,7 @@ var (
 	configPath   = flag.Bool("config-path", false, "Show configuration file path")
 	rawMode      = flag.Bool("raw", false, "Raw playback mode (no UI, just animation)")
 	centerMode   = flag.Bool("center", false, "Center the animation in terminal (works with --raw)")
+	onceMode     = flag.Bool("once", false, "Play animation once then exit (works with --raw)")
 	
 	// Export options
 	exportFile   = flag.String("export", "", "Export file to format (specify output path)")
@@ -206,7 +207,13 @@ func playRawAnimation(aartFile *fileformat.AartFile) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	
-	for {
+	loopCount := 0
+	maxLoops := -1 // Infinite by default
+	if *onceMode {
+		maxLoops = 1
+	}
+	
+	for maxLoops < 0 || loopCount < maxLoops {
 		select {
 		case <-sigChan:
 			return
@@ -304,6 +311,11 @@ func playRawAnimation(aartFile *fileformat.AartFile) {
 			
 			// Next frame
 			frameIdx = (frameIdx + 1) % len(aartFile.Frames)
+			
+			// Check if we completed a loop
+			if frameIdx == 0 {
+				loopCount++
+			}
 		}
 	}
 }
