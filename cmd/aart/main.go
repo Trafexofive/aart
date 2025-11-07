@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mlamkadm/aart/internal/config"
@@ -29,6 +32,8 @@ var (
 	initConfig   = flag.Bool("init", false, "Initialize configuration directory")
 	showConfig   = flag.Bool("show-config", false, "Show current configuration")
 	configPath   = flag.Bool("config-path", false, "Show configuration file path")
+	rawMode      = flag.Bool("raw", false, "Raw playback mode (no UI, just animation)")
+	centerMode   = flag.Bool("center", false, "Center the animation in terminal (works with --raw)")
 	
 	// Export options
 	exportFile   = flag.String("export", "", "Export file to format (specify output path)")
@@ -144,6 +149,12 @@ func main() {
 			os.Exit(1)
 		}
 		
+		// Raw mode: just play the animation without UI
+		if *rawMode {
+			playRawAnimation(aartFile)
+			return
+		}
+		
 		// Create editor model with loaded file
 		model = ui.NewWithFile(cfg, filepath, aartFile)
 	} else {
@@ -160,6 +171,108 @@ func main() {
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
+	}
+}
+
+// playRawAnimation plays animation in raw mode (no UI, just frames)
+func playRawAnimation(aartFile *fileformat.AartFile) {
+	if len(aartFile.Frames) == 0 {
+		return
+	}
+	
+	// Clear screen and hide cursor
+	fmt.Print("\033[2J\033[H\033[?25l")
+	defer fmt.Print("\033[?25h") // Show cursor on exit
+	
+	// Calculate frame delay from first frame duration
+	frameDuration := time.Duration(aartFile.Frames[0].Duration) * time.Millisecond
+	if frameDuration == 0 {
+		frameDuration = 83 * time.Millisecond // Default ~12fps
+	}
+	
+	// Play animation in loop
+	ticker := time.NewTicker(frameDuration)
+	defer ticker.Stop()
+	
+	frameIdx := 0
+	
+	// Get terminal size for centering if needed
+	var termWidth, termHeight int
+	if *centerMode {
+		termWidth, termHeight = getTerminalSize()
+	}
+	
+	// Handle Ctrl+C gracefully
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	
+	for {
+		select {
+		case <-sigChan:
+			return
+		case <-ticker.C:
+			// Move cursor to home
+			fmt.Print("\033[H")
+			
+			// Render current frame
+			frame := aartFile.Frames[frameIdx]
+			
+			if *centerMode {
+				// Calculate padding for centering
+				frameHeight := len(frame.Cells)
+				frameWidth := 0
+				if frameHeight > 0 {
+					frameWidth = len(frame.Cells[0])
+				}
+				
+				verticalPadding := (termHeight - frameHeight) / 2
+				horizontalPadding := (termWidth - frameWidth) / 2
+				
+				if verticalPadding < 0 {
+					verticalPadding = 0
+				}
+				if horizontalPadding < 0 {
+					horizontalPadding = 0
+				}
+				
+				// Add vertical padding
+				for i := 0; i < verticalPadding; i++ {
+					fmt.Println()
+				}
+				
+				// Render frame with horizontal padding
+				for _, row := range frame.Cells {
+					// Add horizontal padding
+					for i := 0; i < horizontalPadding; i++ {
+						fmt.Print(" ")
+					}
+					
+					for _, cell := range row {
+						if cell.Char == "" {
+							fmt.Print(" ")
+						} else {
+							fmt.Print(cell.Char)
+						}
+					}
+					fmt.Println()
+				}
+			} else {
+				// Normal rendering without centering
+				for _, row := range frame.Cells {
+					for _, cell := range row {
+						if cell.Char == "" {
+							fmt.Print(" ")
+						} else {
+							fmt.Print(cell.Char)
+						}
+					}
+					fmt.Println()
+				}
+			}
+			
+			// Next frame
+			frameIdx = (frameIdx + 1) % len(aartFile.Frames)
+		}
 	}
 }
 

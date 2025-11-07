@@ -437,11 +437,16 @@ func extractArtworkFromAA(data []byte) string {
 	return strings.Join(lines, "\n")
 }
 
-// DefaultStartupArtwork is the default ASCII art logo (compact version for 80x24 compatibility)
-const DefaultStartupArtwork = `  ▄▄▄       ▄▄▄      ██▀███  ▄▄▄█████▓
- ▒████▄    ▒████▄   ▓██ ▒ ██▒▓  ██▒ ▓▒
- ▒██  ▀█▄  ▒██  ▀█▄ ▓██ ░▄█ ▒▒ ▓██░ ▒░
- ░██▄▄▄▄██ ░██▄▄▄▄██▒██▀▀█▄  ░ ▓██▓ ░ 
-  ▓█   ▓██▒ ▓█   ▓██░██▓ ▒██▒  ▒██▒ ░ 
-  ▒▒   ▓▒█░ ▒▒   ▓▒█░ ▒▓ ░▒▓░  ▒ ░░   `
+// DefaultStartupArtwork is the default ASCII art logo (enhanced modern version)
+const DefaultStartupArtwork = `
+    ▄▄▄▄▄▄▄▄▄        ▄▄▄▄▄▄▄▄▄       ██▀███   ▄▄▄█████▓
+   ▐████████▌      ▐████████▌     ▓██ ▒ ██▒▓  ██▒ ▓▒
+    ▀██████▀        ▀██████▀      ▓██ ░▄█ ▒▒ ▓██░ ▒░
+     ▐████▌          ▐████▌       ▒██▀▀█▄  ░ ▓██▓ ░ 
+      ▀██▀            ▀██▀        ░██▓ ▒██▒  ▒██▒ ░ 
+       ▀▀              ▀▀         ░ ▒▓ ░▒▓░  ▒ ░░   
+                                                     
+         ┌─────────────────────────────────┐         
+         │  Your ASCII Animation Studio    │         
+         └─────────────────────────────────┘         `
 

@@ -421,122 +421,174 @@ func (s StartupPage) renderHeader() string {
 		logo = s.config.GetStartupArtwork()
 	}
 	
-	// Apply breathing effect to logo color
+	// Apply breathing effect with gradient transition
+	alpha := s.breathing.CurrentAlpha()
 	logoColor := s.theme.AccentPrimary
-	if s.config.Startup.BreathingEffect && s.breathing.CurrentAlpha() > 0.9 {
+	if s.config.Startup.BreathingEffect && alpha > 0.85 {
 		logoColor = s.theme.AccentSecondary
 	}
 	
 	logoStyle := lipgloss.NewStyle().
-		Foreground(logoColor)
+		Foreground(logoColor).
+		Bold(true)
 	
-	// Render logo
+	// Render logo with glow effect
 	logoRendered := logoStyle.Render(strings.TrimSpace(logo))
 	
-	// Apply border if configured
+	// Enhanced border with shadow effect
 	if s.config.Startup.ArtworkBorder {
 		borderStyle := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(s.theme.Border).
-			Padding(1, 2)
+			Border(lipgloss.ThickBorder()).
+			BorderForeground(s.theme.AccentPrimary).
+			Padding(1, 3).
+			Margin(0, 2)
 		logoRendered = borderStyle.Render(logoRendered)
 	}
 	
+	// Add subtle shadow line below
+	shadow := lipgloss.NewStyle().
+		Foreground(s.theme.BgSecondary).
+		Render("▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓")
+	
+	combined := lipgloss.JoinVertical(lipgloss.Center, logoRendered, shadow)
+	
 	// Center logo
-	return lipgloss.NewStyle().Width(s.width).Align(lipgloss.Center).Render(logoRendered)
+	return lipgloss.NewStyle().Width(s.width).Align(lipgloss.Center).Render(combined)
 }
 
 
 func (s StartupPage) renderMenuPanel() string {
 	var menuItems []string
 	
-	// Title with visual active indicator
+	// Animated title bar with pulsing effect
 	var titleBar string
+	pulseChar := "✦"
+	if s.breathing.CurrentAlpha() > 0.9 {
+		pulseChar = "✧"
+	}
+	
 	if s.focusArea == "menu" {
-		// Active panel - inverse title bar
 		titleStyle := lipgloss.NewStyle().
-			Foreground(s.theme.BgPrimary).
+			Foreground(s.theme.FgBright).
 			Background(s.theme.AccentPrimary).
 			Bold(true).
-			Width(46).
-			Padding(0, 1)
-		titleBar = titleStyle.Render("▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓")
+			Width(54).
+			Align(lipgloss.Center).
+			Padding(0, 2)
+		titleBar = titleStyle.Render(fmt.Sprintf("%s QUICK START %s", pulseChar, pulseChar))
 	} else {
-		// Inactive panel
 		titleStyle := lipgloss.NewStyle().
-			Foreground(s.theme.FgSecondary).
-			Width(46).
-			Padding(0, 1)
+			Foreground(s.theme.FgMuted).
+			Background(s.theme.BgSecondary).
+			Width(54).
+			Align(lipgloss.Center).
+			Padding(0, 2)
 		titleBar = titleStyle.Render("Quick Start")
 	}
 	
 	menuItems = append(menuItems, titleBar)
 	menuItems = append(menuItems, "")
 	
+	// Enhanced menu items with icons and better spacing
 	for i, opt := range s.options {
 		isSelected := i == s.selectedOption && s.focusArea == "menu"
 		
-		// Build line without emoji - format: "▸ [N]ew Animation"
 		var line string
 		var lineStyle lipgloss.Style
 		
-		// Highlight first letter of title
+		// Enhanced formatting with icon + key + title
 		firstLetter := strings.ToUpper(string(opt.Shortcut))
-		restOfTitle := opt.Title[1:]
+		
+		// Animated cursor for selected item
+		cursor := "  "
+		if isSelected {
+			if s.breathing.CurrentAlpha() > 0.85 {
+				cursor = "▸ "
+			} else {
+				cursor = "▹ "
+			}
+		}
 		
 		if isSelected {
-			// Selected: inverse video with arrow
+			// Selected: glassmorphic effect with gradient
 			lineStyle = lipgloss.NewStyle().
-				Foreground(s.theme.BgPrimary).
+				Foreground(s.theme.FgBright).
 				Background(s.theme.AccentPrimary).
 				Bold(true).
-				Width(46).
-				Padding(0, 1)
+				Width(54).
+				Padding(0, 2)
+			
+			iconStyle := lipgloss.NewStyle().
+				Foreground(s.theme.AccentSecondary)
 			
 			keyStyle := lipgloss.NewStyle().
-				Foreground(s.theme.BgPrimary).
+				Foreground(s.theme.FgBright).
 				Background(s.theme.AccentSecondary).
 				Bold(true)
 			
-			line = fmt.Sprintf("▸ %s%s",
-				keyStyle.Render(fmt.Sprintf("[%s]", firstLetter)),
-				restOfTitle,
+			titleStyle := lipgloss.NewStyle().
+				Foreground(s.theme.FgBright).
+				Bold(true)
+			
+			line = fmt.Sprintf("%s%s %s %s",
+				cursor,
+				iconStyle.Render(opt.Icon),
+				keyStyle.Render(fmt.Sprintf(" %s ", firstLetter)),
+				titleStyle.Render(opt.Title),
 			)
+			
+			menuItems = append(menuItems, lineStyle.Render(line))
+			
+			// Add description on separate line for selected item
+			descLineStyle := lipgloss.NewStyle().
+				Foreground(s.theme.BgPrimary).
+				Background(s.theme.AccentPrimary).
+				Width(54).
+				Padding(0, 2).
+				Italic(true)
+			menuItems = append(menuItems, descLineStyle.Render("  └─ "+opt.Description))
 		} else {
-			// Not selected: muted
+			// Not selected: clean subtle look
 			lineStyle = lipgloss.NewStyle().
 				Foreground(s.theme.FgSecondary).
-				Width(46).
-				Padding(0, 1)
+				Width(54).
+				Padding(0, 2)
+			
+			iconStyle := lipgloss.NewStyle().
+				Foreground(s.theme.FgMuted)
 			
 			keyStyle := lipgloss.NewStyle().
-				Foreground(s.theme.AccentSecondary)
+				Foreground(s.theme.AccentPrimary).
+				Bold(true)
 			
-			line = fmt.Sprintf("  %s%s",
+			line = fmt.Sprintf("%s%s %s %s",
+				cursor,
+				iconStyle.Render(opt.Icon),
 				keyStyle.Render(fmt.Sprintf("[%s]", firstLetter)),
-				restOfTitle,
+				opt.Title,
 			)
+			
+			menuItems = append(menuItems, lineStyle.Render(line))
 		}
-		
-		menuItems = append(menuItems, lineStyle.Render(line))
 	}
 	
 	menuItems = append(menuItems, "")
 	
-	// Border style based on focus
+	// Enhanced border with double-line effect and shadow
 	borderStyle := s.theme.Border
 	borderType := lipgloss.RoundedBorder()
 	
 	if s.focusArea == "menu" {
 		borderStyle = s.theme.AccentPrimary
-		borderType = lipgloss.ThickBorder()
+		borderType = lipgloss.DoubleBorder()
 	}
 	
 	box := lipgloss.NewStyle().
 		Border(borderType).
 		BorderForeground(borderStyle).
-		Padding(0, 1).
-		Width(50)
+		Padding(1, 1).
+		Width(58).
+		Margin(0, 1)
 	
 	return box.Render(strings.Join(menuItems, "\n"))
 }
@@ -544,56 +596,76 @@ func (s StartupPage) renderMenuPanel() string {
 func (s StartupPage) renderRecentPanel() string {
 	var items []string
 	
-	// Title with Tab hint
+	// Enhanced title bar with animated icon
 	var titleBar string
+	pulseChar := "★"
+	if s.breathing.CurrentAlpha() > 0.9 {
+		pulseChar = "☆"
+	}
+	
 	if s.focusArea == "recent" {
-		// Active panel - inverse title bar
 		titleStyle := lipgloss.NewStyle().
-			Foreground(s.theme.BgPrimary).
+			Foreground(s.theme.FgBright).
 			Background(s.theme.AccentPrimary).
 			Bold(true).
-			Width(46).
-			Padding(0, 1)
-		titleBar = titleStyle.Render("▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓")
+			Width(54).
+			Align(lipgloss.Center).
+			Padding(0, 2)
+		titleBar = titleStyle.Render(fmt.Sprintf("%s RECENT FILES %s", pulseChar, pulseChar))
 	} else {
 		titleStyle := lipgloss.NewStyle().
-			Foreground(s.theme.FgSecondary).
-			Width(46).
-			Padding(0, 1)
+			Foreground(s.theme.FgMuted).
+			Background(s.theme.BgSecondary).
+			Width(54).
+			Align(lipgloss.Center).
+			Padding(0, 2)
+		
 		tabHintStyle := lipgloss.NewStyle().
-			Foreground(s.theme.FgMuted)
-		titleBar = titleStyle.Render("Recent Files") + tabHintStyle.Render("  [Tab]")
+			Foreground(s.theme.AccentPrimary).
+			Bold(true)
+		titleBar = titleStyle.Render("Recent Files") + " " + tabHintStyle.Render("[Tab]")
 	}
 	
 	items = append(items, titleBar)
 	items = append(items, "")
 	
 	if len(s.recentFiles) == 0 {
-		emptyStyle := lipgloss.NewStyle().
+		emptyBox := lipgloss.NewStyle().
 			Foreground(s.theme.FgMuted).
+			Background(s.theme.BgSecondary).
+			Align(lipgloss.Center).
 			Italic(true).
-			Padding(0, 1)
-		items = append(items, emptyStyle.Render("No recent files"))
-		items = append(items, "")
-		items = append(items, emptyStyle.Render("Press 'n' to create new animation"))
-		items = append(items, emptyStyle.Render("Press 'i' to import a GIF"))
+			Padding(2, 4).
+			Width(50).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(s.theme.Border)
+		
+		emptyContent := lipgloss.JoinVertical(
+			lipgloss.Center,
+			lipgloss.NewStyle().Foreground(s.theme.FgMuted).Bold(true).Render("📭"),
+			"",
+			"No recent files yet",
+			"",
+			lipgloss.NewStyle().Foreground(s.theme.AccentSecondary).Render("Press 'n' to create"),
+			lipgloss.NewStyle().Foreground(s.theme.AccentSecondary).Render("Press 'i' to import GIF"),
+		)
+		
+		items = append(items, emptyBox.Render(emptyContent))
 	} else {
-		// Compact single-line format
+		// Enhanced recent file list with card design
 		for i, rf := range s.recentFiles {
-			if i >= 8 { // Show more files now that we're compact
+			if i >= 8 {
 				break
 			}
 			
 			isSelected := s.focusArea == "recent" && i == s.selectedRecent
 			
-			// Format: "1. filename.aart         150f • 13m"
 			filename := filepath.Base(rf.Path)
-			if len(filename) > 22 {
-				filename = filename[:19] + "..."
+			if len(filename) > 30 {
+				filename = filename[:27] + "..."
 			}
 			
 			timeAgo := formatTimeAgo(rf.Timestamp)
-			// Compact time format
 			timeAgo = strings.Replace(timeAgo, " ago", "", 1)
 			timeAgo = strings.Replace(timeAgo, "minutes", "m", 1)
 			timeAgo = strings.Replace(timeAgo, "minute", "m", 1)
@@ -602,168 +674,263 @@ func (s StartupPage) renderRecentPanel() string {
 			timeAgo = strings.Replace(timeAgo, "days", "d", 1)
 			timeAgo = strings.Replace(timeAgo, "day", "d", 1)
 			
+			// Animated cursor for selected item
+			cursor := "  "
+			if isSelected {
+				if s.breathing.CurrentAlpha() > 0.85 {
+					cursor = "▸ "
+				} else {
+					cursor = "▹ "
+				}
+			}
+			
 			var line string
 			var lineStyle lipgloss.Style
 			
 			if isSelected {
+				// Selected: card-style highlight
 				lineStyle = lipgloss.NewStyle().
-					Foreground(s.theme.BgPrimary).
+					Foreground(s.theme.FgBright).
 					Background(s.theme.AccentPrimary).
 					Bold(true).
-					Width(46).
-					Padding(0, 1)
+					Width(54).
+					Padding(0, 2)
 				
-				line = fmt.Sprintf("▸ %d. %-22s %3df • %s",
-					i+1,
-					filename,
-					rf.Frames,
-					timeAgo,
+				numStyle := lipgloss.NewStyle().
+					Foreground(s.theme.AccentSecondary).
+					Background(s.theme.FgBright).
+					Bold(true)
+				
+				nameStyle := lipgloss.NewStyle().
+					Foreground(s.theme.FgBright).
+					Bold(true)
+				
+				metaStyle := lipgloss.NewStyle().
+					Foreground(s.theme.BgPrimary)
+				
+				line = fmt.Sprintf("%s%s %-30s %s",
+					cursor,
+					numStyle.Render(fmt.Sprintf(" %d ", i+1)),
+					nameStyle.Render(filename),
+					metaStyle.Render(fmt.Sprintf("%df·%s", rf.Frames, timeAgo)),
 				)
-				items = append(items, lineStyle.Render(line))
 			} else {
-				// Build line without embedded styles to avoid escape sequence issues
-				line = fmt.Sprintf("  %d. %-22s %3df • %s",
-					i+1,
-					filename,
-					rf.Frames,
-					timeAgo,
-				)
-				
+				// Not selected: subtle card
 				lineStyle = lipgloss.NewStyle().
 					Foreground(s.theme.FgSecondary).
-					Width(46).
-					Padding(0, 1)
+					Width(54).
+					Padding(0, 2)
 				
-				items = append(items, lineStyle.Render(line))
+				numStyle := lipgloss.NewStyle().
+					Foreground(s.theme.AccentPrimary).
+					Bold(true)
+				
+				metaStyle := lipgloss.NewStyle().
+					Foreground(s.theme.FgMuted)
+				
+				line = fmt.Sprintf("%s%s %-30s %s",
+					cursor,
+					numStyle.Render(fmt.Sprintf("[%d]", i+1)),
+					filename,
+					metaStyle.Render(fmt.Sprintf("%df·%s", rf.Frames, timeAgo)),
+				)
 			}
+			
+			items = append(items, lineStyle.Render(line))
 		}
 		
 		items = append(items, "")
 		
-		// Action hints
+		// Enhanced action hints
 		hintStyle := lipgloss.NewStyle().
 			Foreground(s.theme.FgMuted).
-			Padding(0, 1)
-		items = append(items, hintStyle.Render("Enter: open │ Del: remove"))
+			Background(s.theme.BgSecondary).
+			Align(lipgloss.Center).
+			Width(54).
+			Padding(0, 2)
+		items = append(items, hintStyle.Render("↵ open  │  ⌫ remove  │  1-8 quick select"))
 	}
 	
 	items = append(items, "")
+	items = append(items, "")
 	
-	// Compact statistics
-	statsStyle := lipgloss.NewStyle().
-		Foreground(s.theme.FgMuted).
-		Padding(0, 1)
-	
+	// Enhanced statistics panel with card design
 	divider := lipgloss.NewStyle().
-		Foreground(s.theme.Border).
-		Render("─────────────────────────────────────────────")
+		Foreground(s.theme.AccentPrimary).
+		Align(lipgloss.Center).
+		Bold(true).
+		Render("━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	items = append(items, divider)
+	items = append(items, "")
 	
-	stats := fmt.Sprintf("Default: %dx%d @ %dfps",
-		s.config.Editor.DefaultWidth,
-		s.config.Editor.DefaultHeight,
-		s.config.Editor.DefaultFPS,
-	)
-	items = append(items, statsStyle.Render(stats))
+	// Stats with icons
+	statsStyle := lipgloss.NewStyle().
+		Foreground(s.theme.FgSecondary).
+		Padding(0, 2).
+		Width(54)
 	
-	methodStats := fmt.Sprintf("Method: %s", s.config.Converter.DefaultMethod)
-	items = append(items, statsStyle.Render(methodStats))
+	iconStyle := lipgloss.NewStyle().
+		Foreground(s.theme.AccentPrimary)
+	
+	valueStyle := lipgloss.NewStyle().
+		Foreground(s.theme.AccentSecondary).
+		Bold(true)
+	
+	stats1 := statsStyle.Render(fmt.Sprintf("%s Canvas: %s",
+		iconStyle.Render("📐"),
+		valueStyle.Render(fmt.Sprintf("%dx%d @ %dfps",
+			s.config.Editor.DefaultWidth,
+			s.config.Editor.DefaultHeight,
+			s.config.Editor.DefaultFPS)),
+	))
+	items = append(items, stats1)
+	
+	stats2 := statsStyle.Render(fmt.Sprintf("%s Method: %s",
+		iconStyle.Render("🎨"),
+		valueStyle.Render(s.config.Converter.DefaultMethod),
+	))
+	items = append(items, stats2)
 	
 	items = append(items, "")
 	
-	// Tip with counter
+	// Animated rotating tips with better styling
 	tipStyle := lipgloss.NewStyle().
 		Foreground(s.theme.FgMuted).
+		Background(s.theme.BgSecondary).
 		Italic(true).
-		Padding(0, 1)
+		Align(lipgloss.Center).
+		Width(54).
+		Padding(1, 2)
 	
 	tips := []string{
-		"Use luminosity method for best quality",
-		"Press 't' to change theme instantly",
-		"Import GIFs from URLs with 'i' key",
-		"Use --ratio fit to preserve aspect",
-		"Edit config.yml for custom settings",
-		"Try edge method for wireframe style",
-		"Block method gives solid appearance",
-		"Number keys quick-open recent files",
+		"💡 Luminosity method = best quality",
+		"🎨 Press 't' to switch themes instantly",
+		"🌐 Import GIFs directly from URLs",
+		"📏 Use --ratio fit to preserve aspect",
+		"⚙️  Edit config.yml for customization",
+		"🖼️  Edge method for wireframe style",
+		"🧱 Block method for solid appearance",
+		"⚡ Number keys quick-open recent files",
 	}
 	
 	tipIdx := int(s.currentTime.Unix()/5) % len(tips)
 	
-	// Breathing effect on tip rotation indicator
+	// Breathing effect on tip
 	rotateIcon := "⟳"
 	if s.breathing.CurrentAlpha() > 0.95 {
 		rotateIcon = "⟲"
 	}
 	
-	tipLine := fmt.Sprintf("Tip %d/%d: %s %s",
-		tipIdx+1,
-		len(tips),
+	tipLine := fmt.Sprintf("%s  %s",
 		tips[tipIdx],
-		rotateIcon,
+		lipgloss.NewStyle().Foreground(s.theme.AccentPrimary).Render(rotateIcon),
 	)
 	items = append(items, tipStyle.Render(tipLine))
 	
-	// Border style based on focus
+	// Enhanced border with glow effect
 	borderStyle := s.theme.Border
 	borderType := lipgloss.RoundedBorder()
 	
 	if s.focusArea == "recent" {
 		borderStyle = s.theme.AccentPrimary
-		borderType = lipgloss.ThickBorder()
+		borderType = lipgloss.DoubleBorder()
 	}
 	
 	box := lipgloss.NewStyle().
 		Border(borderType).
 		BorderForeground(borderStyle).
-		Padding(0, 1).
-		Width(50)
+		Padding(1, 1).
+		Width(58).
+		Margin(0, 1)
 	
 	return box.Render(strings.Join(items, "\n"))
 }
 
 func (s StartupPage) renderFooter() string {
-	// Tagline and version first
+	// Enhanced tagline with gradient-style separators
 	taglineStyle := lipgloss.NewStyle().
-		Foreground(s.theme.FgSecondary).
+		Foreground(s.theme.FgBright).
+		Bold(true).
 		Align(lipgloss.Center)
 	
-	tagline := taglineStyle.Render("ASCII Art Animation Editor")
-	subtitle := lipgloss.NewStyle().
-		Foreground(s.theme.FgMuted).
-		Align(lipgloss.Center).
-		Render("Convert • Create • Animate         v0.1.0")
+	tagline := taglineStyle.Render("✦ ASCII ART ANIMATION EDITOR ✦")
 	
-	// Then navigation hints below
-	hintStyle := lipgloss.NewStyle().
-		Foreground(s.theme.FgSecondary).
+	// Subtitle with better styling
+	accentStyle := lipgloss.NewStyle().
+		Foreground(s.theme.AccentPrimary).
 		Bold(true)
 	
-	divStyle := lipgloss.NewStyle().
+	mutedStyle := lipgloss.NewStyle().
 		Foreground(s.theme.FgMuted)
 	
-	// Complete navigation hints
-	hints := hintStyle.Render("hjkl:navigate") +
-		divStyle.Render(" │ ") +
-		hintStyle.Render("Tab:switch") +
-		divStyle.Render(" │ ") +
-		hintStyle.Render("Enter:select") +
-		divStyle.Render(" │ ") +
-		hintStyle.Render("Esc:cancel") +
-		divStyle.Render(" │ ") +
-		hintStyle.Render("q:quit")
+	subtitle := lipgloss.NewStyle().
+		Align(lipgloss.Center).
+		Render(
+			accentStyle.Render("Convert") + 
+			mutedStyle.Render(" • ") + 
+			accentStyle.Render("Create") + 
+			mutedStyle.Render(" • ") + 
+			accentStyle.Render("Animate") + 
+			mutedStyle.Render("         ") + 
+			lipgloss.NewStyle().Foreground(s.theme.FgSecondary).Render("v0.1.0"),
+		)
+	
+	// Enhanced navigation hints with better visual hierarchy
+	keyStyle := lipgloss.NewStyle().
+		Foreground(s.theme.AccentPrimary).
+		Bold(true)
+	
+	labelStyle := lipgloss.NewStyle().
+		Foreground(s.theme.FgSecondary)
+	
+	divStyle := lipgloss.NewStyle().
+		Foreground(s.theme.Border).
+		Bold(true)
+	
+	// Build navigation with styled components
+	hints := keyStyle.Render("↑↓") + labelStyle.Render("navigate") +
+		divStyle.Render(" ┃ ") +
+		keyStyle.Render("Tab") + labelStyle.Render("switch") +
+		divStyle.Render(" ┃ ") +
+		keyStyle.Render("↵") + labelStyle.Render("select") +
+		divStyle.Render(" ┃ ") +
+		keyStyle.Render("Esc") + labelStyle.Render("cancel") +
+		divStyle.Render(" ┃ ") +
+		keyStyle.Render("Q") + labelStyle.Render("quit")
 	
 	centeredHints := lipgloss.NewStyle().
 		Width(s.width).
 		Align(lipgloss.Center).
 		Render(hints)
 	
-	// Combine tagline, subtitle, and hints
+	// Add breathing effect indicator
+	breathingIndicator := ""
+	if s.config.Startup.BreathingEffect {
+		alpha := s.breathing.CurrentAlpha()
+		if alpha > 0.9 {
+			breathingIndicator = lipgloss.NewStyle().
+				Foreground(s.theme.AccentPrimary).
+				Render("◉")
+		} else {
+			breathingIndicator = lipgloss.NewStyle().
+				Foreground(s.theme.FgMuted).
+				Render("○")
+		}
+		breathingIndicator = lipgloss.NewStyle().
+			Width(s.width).
+			Align(lipgloss.Center).
+			Render(breathingIndicator)
+	}
+	
+	// Combine all footer elements
 	return lipgloss.JoinVertical(
 		lipgloss.Center,
+		"",
 		tagline,
 		subtitle,
+		"",
 		centeredHints,
+		breathingIndicator,
 	)
 }
 
