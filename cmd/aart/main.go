@@ -242,17 +242,13 @@ func playRawAnimation(aartFile *fileformat.AartFile) {
 					horizontalPadding = 0
 				}
 				
-				// Add vertical padding
-				for i := 0; i < verticalPadding; i++ {
-					fmt.Println()
-				}
-				
-				// Render frame with horizontal padding
-				for _, row := range frame.Cells {
-					// Add horizontal padding
-					for i := 0; i < horizontalPadding; i++ {
-						fmt.Print(" ")
-					}
+				// Render frame using absolute cursor positioning (no newlines for padding)
+				for rowIdx, row := range frame.Cells {
+					// Move cursor to absolute position (row, col)
+					// ANSI escape: \033[<row>;<col>H (1-indexed)
+					targetRow := verticalPadding + rowIdx + 1
+					targetCol := horizontalPadding + 1
+					fmt.Printf("\033[%d;%dH", targetRow, targetCol)
 					
 					for _, cell := range row {
 						char := cell.Char
@@ -277,7 +273,6 @@ func playRawAnimation(aartFile *fileformat.AartFile) {
 							fmt.Print(char)
 						}
 					}
-					fmt.Println()
 				}
 			} else {
 				// Normal rendering without centering
