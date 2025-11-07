@@ -254,11 +254,18 @@ func playRawAnimation(aartFile *fileformat.AartFile) {
 						}
 						
 						// Apply colors if present
-						if cell.Foreground != "" && cell.Foreground != "#FFFFFF" {
+						if cell.Foreground != "" && cell.Foreground != "#000000" {
 							fg := hexToRGB(cell.Foreground)
-							bg := hexToRGB(cell.Background)
-							fmt.Printf("\033[38;2;%d;%d;%dm\033[48;2;%d;%d;%dm%s\033[0m", 
-								fg[0], fg[1], fg[2], bg[0], bg[1], bg[2], char)
+							// If bg is black (#000000), use transparent (don't set bg)
+							if cell.Background != "" && cell.Background != "#000000" {
+								bg := hexToRGB(cell.Background)
+								fmt.Printf("\033[38;2;%d;%d;%dm\033[48;2;%d;%d;%dm%s\033[0m", 
+									fg[0], fg[1], fg[2], bg[0], bg[1], bg[2], char)
+							} else {
+								// Foreground color only, transparent background
+								fmt.Printf("\033[38;2;%d;%d;%dm%s\033[0m", 
+									fg[0], fg[1], fg[2], char)
+							}
 						} else {
 							fmt.Print(char)
 						}
@@ -275,11 +282,18 @@ func playRawAnimation(aartFile *fileformat.AartFile) {
 						}
 						
 						// Apply colors if present
-						if cell.Foreground != "" && cell.Foreground != "#FFFFFF" {
+						if cell.Foreground != "" && cell.Foreground != "#000000" {
 							fg := hexToRGB(cell.Foreground)
-							bg := hexToRGB(cell.Background)
-							fmt.Printf("\033[38;2;%d;%d;%dm\033[48;2;%d;%d;%dm%s\033[0m", 
-								fg[0], fg[1], fg[2], bg[0], bg[1], bg[2], char)
+							// If bg is black (#000000), use transparent (don't set bg)
+							if cell.Background != "" && cell.Background != "#000000" {
+								bg := hexToRGB(cell.Background)
+								fmt.Printf("\033[38;2;%d;%d;%dm\033[48;2;%d;%d;%dm%s\033[0m", 
+									fg[0], fg[1], fg[2], bg[0], bg[1], bg[2], char)
+							} else {
+								// Foreground color only, transparent background
+								fmt.Printf("\033[38;2;%d;%d;%dm%s\033[0m", 
+									fg[0], fg[1], fg[2], char)
+							}
 						} else {
 							fmt.Print(char)
 						}
