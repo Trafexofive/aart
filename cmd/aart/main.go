@@ -419,6 +419,30 @@ func handleGifImport(cfg *config.Config, flagsSet map[string]bool) error {
 		cfg.AddRecentFile(*outputFile, len(frames))
 		config.Save(cfg)
 		
+		// If raw mode, play the saved file
+		if *rawMode {
+			aartFile, err := fileformat.Load(*outputFile)
+			if err != nil {
+				return fmt.Errorf("failed to load saved file for raw playback: %v", err)
+			}
+			playRawAnimation(aartFile)
+		}
+		
+		return nil
+	}
+
+	// If raw mode without output file, save to temp and play
+	if *rawMode {
+		tmpFile := "/tmp/aart_import_temp.aa"
+		if err := converter.SaveFrames(frames, tmpFile); err != nil {
+			return fmt.Errorf("failed to save temp file for raw playback: %v", err)
+		}
+		aartFile, err := fileformat.Load(tmpFile)
+		if err != nil {
+			return fmt.Errorf("failed to load temp file for raw playback: %v", err)
+		}
+		fmt.Println("🎬 Playing animation...\n")
+		playRawAnimation(aartFile)
 		return nil
 	}
 
